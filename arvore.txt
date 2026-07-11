@@ -1,0 +1,83 @@
+﻿  .claude
+  cache
+  historicidades_democraticas
+  modules
+  pesquisa
+  scripts
+  sessions
+  .gitignore
+  Acesso online.txt
+  app.py
+  arvore.txt
+  cartas_db.json
+  CLAUDE.md
+  converter_base.py
+  limpeza_diagnostico.py
+  limpeza_executar.py
+  README.md
+  requirements.txt
+  sugestoes_constituintes_72k.xlsx
+    settings.local.json
+    .gitkeep
+    embeddings_cartas_db.npz
+    modules
+    scripts
+    sessions
+    .gitignore
+    app.py
+    CLAUDE.md
+    converter_base.py
+    limpeza_diagnostico.py
+    limpeza_executar.py
+    README.md
+    requirements.txt
+      annotation_manager.py
+      cache_manager.py
+      config_manager.py
+      data_manager.py
+      export_manager.py
+      search_engine.py
+      semantic_engine.py
+      series_manager.py
+      ui_manager.py
+      __init__.py
+      consolidar_buscas.py
+      precompute_embeddings.py
+      current_session.json
+    annotation_manager.py
+    cache_manager.py
+    config_manager.py
+    data_manager.py
+    export_manager.py
+    search_engine.py
+    semantic_engine.py
+    series_manager.py
+    ui_manager.py
+    __init__.py
+    Bibliografia
+    Produções
+    Base SAIC completa.pdf
+    Base SAIC excel.xlsx
+    Base SAIC original.csv
+    base_saic_completa.parquet
+    Caderno de anotações de pesquisa.docx
+      Barrientos-Parra e Lunardi - A democracia participativa na Assembléia Nacional Constituinte e na Constituição de 1988.pdf
+      Caroline Bauer - Presenças da ditadura e esperanças na Constituição.pdf
+      Formulário Sugestão dos cidadãos.pdf
+      Lucas Coelho Brandao - Participação popular na ANC.pdf
+      NATÁLIA SANTOS - Movimento Negro na ANC.pdf
+      Plenário pró-participação popular na constituinte.pdf
+      Stéphane Monclaire - A Constituição desejada v.1.pdf
+      Stéphane Monclaire - A Constituição desejada v.2.pdf
+      Palestra FAED 06-2026
+      VI INTH
+        cartaz_palestra_historicidades_democraticas - impressao.png
+        cartaz_palestra_instagram_feed_4x5.png
+        [ANOTAÇÕES NO EVENTO].md
+        [DEMOCRATIC HISTORICITIES ppt].pdf
+        [DEMOCRATIC HISTORICITIES v4].docx
+        [DEMOCRATIC HISTORICITIES v4].pdf
+        [DEMOCRATIC HISTORICITIES].pptx
+    consolidar_buscas.py
+    precompute_embeddings.py
+    current_session.json

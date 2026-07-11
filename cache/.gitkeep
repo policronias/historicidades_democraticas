@@ -1,0 +1,6 @@
+# Este diretório armazena os arquivos .npz de embeddings semânticos pré-computados.
+# Os arquivos .npz são excluídos do controle de versão via .gitignore
+# (podem chegar a ~212 MB por base de dados).
+#
+# Para gerar o cache, execute:
+#   python scripts/precompute_embeddings.py

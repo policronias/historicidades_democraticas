@@ -1,0 +1,46 @@
+# Ambiente virtual Python
+.venv/
+venv/
+env/
+
+# Cache de embeddings semânticos (arquivos grandes, gerados localmente)
+cache/*.npz
+
+# Base de dados principal (grande demais para git, gerada/importada localmente)
+cartas_db.json
+sugestoes_constituintes_72k.xlsx
+
+# Credenciais de acesso (NUNCA versionar)
+Acesso online.txt
+
+# Sessão do Streamlit (gerada automaticamente, cresce e muda constantemente)
+sessions/current_session.json
+
+# Backups locais de sessão
+backups/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# IDEs e editores
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log

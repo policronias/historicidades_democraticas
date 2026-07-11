@@ -24,6 +24,7 @@ from modules import (
     SeriesManager,
     ExportManager,
     SemanticEngine,
+    StemmingEngine,
     FrequencyAnalyzer
 )
 from modules.config_manager import EMBEDDING_MODEL
@@ -287,6 +288,12 @@ def initialize_session():
     if 'semantic_engine' not in st.session_state:
         st.session_state.semantic_engine = SemanticEngine(model_name=EMBEDDING_MODEL)
 
+    if 'stemming_engine' not in st.session_state:
+        st.session_state.stemming_engine = StemmingEngine()
+
+    if 'highlight_use_stemming' not in st.session_state:
+        st.session_state.highlight_use_stemming = False
+
     if 'semantic_results' not in st.session_state:
         st.session_state.semantic_results = []
 
@@ -331,6 +338,7 @@ am = st.session_state.annotation_manager
 sm = st.session_state.series_manager
 se = st.session_state.search_engine
 sem_e = st.session_state.semantic_engine
+stem_e = st.session_state.stemming_engine
 
 # Cache local de get_todas_cartas() — evita 40+ chamadas no mesmo render
 _todas_cartas = dm.get_todas_cartas()
@@ -697,28 +705,54 @@ if form_submit and termo_busca:
         else:
             search_fields = {'texto', 'nome', 'destinatario', 'catalogo', 'indexacao', 'origem'}
 
-        ids_resultado, ocorrencias = se.search_advanced(
-            _todas_cartas,
-            termo_busca,
-            case_sensitive=case_sensitive,
-            use_variations=(tipo_busca == "Variações"),
-            search_fields=search_fields
-        )
+        _use_variations = (tipo_busca == "Variações")
+        _stem_index = None
+        _erro_busca = None
+
+        if _use_variations:
+            try:
+                _stem_index = stem_e.load_index(_todas_cartas, dm.current_database_name)
+            except FileNotFoundError as _e:
+                _erro_busca = str(_e)
+
+        if _erro_busca:
+            st.error(f"❌ {_erro_busca}")
+            ids_resultado, ocorrencias = [], {}
+        else:
+            try:
+                ids_resultado, ocorrencias = se.search_advanced(
+                    _todas_cartas,
+                    termo_busca,
+                    case_sensitive=case_sensitive,
+                    use_variations=_use_variations,
+                    search_fields=search_fields,
+                    stem_index=_stem_index
+                )
+            except RuntimeError as _e:
+                st.error(f"❌ {_e}")
+                ids_resultado, ocorrencias = [], {}
+
         if '*' in termo_busca:
             wildcart_pattern = termo_busca.replace("*", r"\w*")
             regex_pat = rf'\b{wildcart_pattern}\b'
             st.session_state.highlighted_terms = [regex_pat]
             st.session_state.highlight_use_regex = True
+            st.session_state.highlight_use_stemming = False
             st.session_state.wildcard_matches = se.get_wildcard_matches(
                 _todas_cartas, termo_busca, case_sensitive
             )
-        elif tipo_busca == "Variações":
-            st.session_state.highlighted_terms = [se.get_variacoes_pattern(termo_busca)]
-            st.session_state.highlight_use_regex = True
+        elif _use_variations:
+            st.session_state.highlighted_terms = [termo_busca] if ids_resultado else []
+            st.session_state.highlight_use_regex = False
+            st.session_state.highlight_use_stemming = True
             st.session_state.wildcard_matches = {}
+            st.session_state._last_variacoes = (
+                se.get_variacoes_info(termo_busca, _stem_index) if _stem_index else [termo_busca]
+            )
         else:
             st.session_state.highlighted_terms = [termo_busca]
             st.session_state.highlight_use_regex = False
+            st.session_state.highlight_use_stemming = False
             st.session_state.wildcard_matches = {}
 
         st.session_state.search_results = ids_resultado
@@ -739,12 +773,13 @@ if ids_resultado:
     col_b.metric("Ocorrências totais", sum(ocorrencias.values()) if ocorrencias else 0)
     col_c.metric("Escopo", st.session_state.search_scope)
 
-    # Mostrar variações quando usando "Variações"
+    # Mostrar variações quando usando "Variações" (calculado no momento da busca
+    # e cacheado em session_state -- evita recarregar o índice de stems a cada rerun)
     tipo_busca_atual = st.session_state.get('search_tipo', 'Variações')
     if tipo_busca_atual == "Variações" and termo_busca:
-        variacoes = se.get_variacoes_info(termo_busca)
+        variacoes = st.session_state.get('_last_variacoes', [])
         if len(variacoes) > 1:
-            st.caption(f"**Variações buscadas:** {' | '.join(variacoes)}")
+            st.caption(f"**Variações encontradas:** {' | '.join(variacoes)}")
 
     # Mostrar termos capturados por wildcard
     if st.session_state.wildcard_matches:
@@ -763,6 +798,7 @@ if ids_resultado:
             st.session_state.search_results = []
             st.session_state.wildcard_matches = {}
             st.session_state.highlight_use_regex = False
+            st.session_state.highlight_use_stemming = False
             st.session_state._last_search_key = None
             st.rerun()
 elif form_submit:
@@ -950,7 +986,8 @@ with tab1:
                     texto,
                     st.session_state.highlighted_terms,
                     cores_destaque[:len(st.session_state.highlighted_terms)],
-                    use_regex=st.session_state.highlight_use_regex
+                    use_regex=st.session_state.highlight_use_regex,
+                    use_stemming=st.session_state.get('highlight_use_stemming', False)
                 )
                 st.markdown(texto_destacado, unsafe_allow_html=True)
             else:
@@ -1935,6 +1972,93 @@ with tab5:
             "Cartas nas Séries",
             sm.total_cartas_series()
         )
+
+    st.markdown("---")
+
+    # ========== ÍNDICE DE STEMS (BUSCA POR VARIAÇÕES) ==========
+    st.subheader("🧬 Índice de Stems (Busca por Variações)")
+    st.caption(
+        "A busca em modo 'Variações' (aba Explorar) reconhece automaticamente "
+        "flexões de qualquer palavra (radical RSLP), sem depender de uma lista "
+        "fixa de termos. Requer este índice pré-computado."
+    )
+
+    _db_name_stem = dm.current_database_name
+    _cartas_stem = _todas_cartas
+
+    _status_stem = stem_e.get_status(_db_name_stem, _cartas_stem)
+
+    _col_st1, _col_st2, _col_st3, _col_st4 = st.columns(4)
+    _col_st1.metric(
+        "Cache existe",
+        "✅ Sim" if _status_stem['cache_existe'] else "❌ Não"
+    )
+    _col_st2.metric(
+        "Cache válido",
+        "✅ Sim" if _status_stem['cache_valido'] else "⚠️ Não"
+    )
+    _col_st3.metric(
+        "Cartas indexadas",
+        f"{_status_stem['total_indexado']:,}" if _status_stem['total_indexado'] > 0 else "—"
+    )
+    _col_st4.metric(
+        "Radicais distintos",
+        f"{_status_stem['total_radicais']:,}" if _status_stem['total_radicais'] > 0 else "—"
+    )
+
+    _stem_cache_valido = _status_stem['cache_valido']
+
+    if _stem_cache_valido:
+        st.success("✅ O índice de stems está pronto. A busca por 'Variações' já pode ser usada.")
+    elif not _status_stem['cache_existe']:
+        st.info(
+            "ℹ️ **Índice de stems não encontrado.** "
+            "É necessário pré-computá-lo antes de usar a busca em modo 'Variações'. "
+            "O processo ocorre **uma única vez por base de dados** e pode levar alguns minutos."
+        )
+    else:
+        st.warning(
+            "⚠️ **Cache desatualizado.** A base de dados foi alterada desde a última indexação. "
+            "Clique no botão abaixo para reindexar."
+        )
+
+    if st.button(
+        "⚡ Pré-computar Índice de Stems",
+        disabled=_stem_cache_valido,
+        use_container_width=True,
+        key="btn_computar_stems"
+    ):
+        _barra_progresso_stem = st.progress(0)
+        _texto_status_stem = st.empty()
+
+        def _callback_progresso_stem(atual: int, total_c: int) -> None:
+            pct = atual / total_c
+            _barra_progresso_stem.progress(pct)
+            _texto_status_stem.text(
+                f"Processando… {atual:,}/{total_c:,} cartas ({pct * 100:.1f}%)"
+            )
+
+        _t0_stem = time.time()
+        _ok_stem, _msg_stem = stem_e.compute_stem_index(
+            cartas=_cartas_stem,
+            db_name=_db_name_stem,
+            progress_callback=_callback_progresso_stem
+        )
+        _tempo_stem = time.time() - _t0_stem
+
+        _barra_progresso_stem.progress(1.0)
+        _texto_status_stem.empty()
+
+        if _ok_stem:
+            st.success(
+                f"✅ Indexação concluída!  \n"
+                f"{_msg_stem}  \n"
+                f"Tempo total: {_tempo_stem:.0f}s ({_tempo_stem / 60:.1f} min)"
+            )
+        else:
+            st.error(f"❌ Erro na indexação: {_msg_stem}")
+
+        st.rerun()
 
     st.markdown("---")
 

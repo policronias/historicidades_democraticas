@@ -7,6 +7,7 @@ from .annotation_manager import AnnotationManager
 from .series_manager import SeriesManager
 from .export_manager import ExportManager
 from .semantic_engine import SemanticEngine
+from .stemming_engine import StemmingEngine
 from .frequency_analyzer import FrequencyAnalyzer
 
 # Novos módulos de gerenciamento
@@ -44,6 +45,7 @@ __all__ = [
     'SeriesManager',
     'ExportManager',
     'SemanticEngine',
+    'StemmingEngine',
     'FrequencyAnalyzer',
     # Cache functions
     'build_df_cached',

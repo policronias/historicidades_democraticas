@@ -3,8 +3,9 @@
 venv/
 env/
 
-# Cache de embeddings semânticos (arquivos grandes, gerados localmente)
+# Cache de embeddings semânticos e índice de stems (arquivos grandes, gerados localmente)
 cache/*.npz
+cache/*.pkl
 
 # Base de dados principal (grande demais para git, gerada/importada localmente)
 cartas_db.json

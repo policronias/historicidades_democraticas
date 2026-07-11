@@ -1,34 +1,36 @@
 """
 Engine de busca avançada com suporte a regex, case-insensitive e variações lexicais.
+
+O modo "Variações" delega a variações lexicais reais para StemmingEngine
+(radical RSLP via NLTK) em vez de um dicionário fixo de termos
+pré-selecionados -- funciona para qualquer palavra da base, não apenas para
+uma lista escolhida manualmente. Ver modules/stemming_engine.py.
 """
 
 import re
 import unicodedata
-from typing import Dict, List, Tuple, Set
+from typing import Dict, List, Optional, Tuple, Set
+
+from .stemming_engine import StemmingEngine
+
+
+class StemIndexUnavailable(Exception):
+    """Busca em modo 'Variações' foi solicitada sem um índice de stems carregado."""
+    pass
 
 
 class SearchEngine:
     """Executa buscas avançadas nas cartas."""
 
-    # Dicionário de variações lexicais comuns em português
-    LEXICAL_VARIATIONS = {
-        'historia': r'\b(?:história|histórica|histórico|históricos|históricas|historia)\b',
-        'democracia': r'\b(?:democracia|democrático|democráticos|democrática|democráticas)\b',
-        'constituicao': r'\b(?:constituição|constitucional|constitucionais)\b',
-        'governo': r'\b(?:governo|governante|governantes|governamental)\b',
-        'povo': r'\b(?:povo|popular|populares|pública|público|pública)\b',
-        'direito': r'\b(?:direito|direitos|direitista)\b',
-        'liberdade': r'\b(?:liberdade|liberdades|libertário|livre|livremente)\b',
-        'justica': r'\b(?:justiça|justamente|justo|justos)\b',
-        'igualdade': r'\b(?:igualdade|igual|iguais|igualmente)\b',
-        'educacao': r'\b(?:educação|educacional|educativos|educados|educador)\b',
-        'saude': r'\b(?:saúde|saudável|saúdável)\b',
-    }
-
     def __init__(self):
         """Inicializa o search engine."""
         self.last_search_term = ""
         self.last_results: Dict[str, int] = {}
+        # Usado apenas para stem(word)/tokenize() (leve, sem I/O de disco).
+        # O índice invertido em si (stem -> carta_id -> contagem) é carregado
+        # pelo chamador via StemmingEngine.load_index() e passado como
+        # `stem_index` aos métodos de busca abaixo.
+        self.stemming = StemmingEngine()
 
     @staticmethod
     def _strip_accents(text: str) -> str:
@@ -121,50 +123,58 @@ class SearchEngine:
         self.last_results = resultados
         return list(resultados.keys()), resultados
 
-    def get_variacoes_pattern(self, termo: str) -> str:
+    def _require_stem_index(self, stem_index: Optional[Dict]) -> Dict:
+        if stem_index is None:
+            raise StemIndexUnavailable(
+                "Busca em modo 'Variações' requer o índice de stems pré-computado. "
+                "Use o botão '⚡ Pré-computar Índice de Stems' na aba Configurações."
+            )
+        return stem_index
+
+    def get_variacoes_matches(
+        self,
+        termo: str,
+        stem_index: Dict,
+        search_fields: Optional[Set[str]] = None,
+        cartas: Optional[Dict] = None
+    ) -> Dict[str, int]:
         """
-        Retorna o padrão regex final usado para buscar/destacar variações
-        lexicais de um termo em modo "Variações" (dicionário pré-definido
-        em LEXICAL_VARIATIONS ou padrão automático \\b{termo}\\w*\\b).
+        Retorna carta_id -> contagem de ocorrências do radical (stem RSLP) de
+        `termo` nos campos indicados, a partir do índice pré-computado.
 
-        Args:
-            termo: Termo buscado
-
-        Returns:
-            Padrão regex (string) equivalente ao usado em search_lexical_variations
+        Substitui o antigo get_variacoes_pattern(): variações lexicais deixam
+        de ser um padrão regex fixo e passam a ser resolvidas por igualdade de
+        radical via StemmingEngine. Radicais curtos demais (< MIN_STEM_LENGTH)
+        caem para substring exata -- ver StemmingEngine.get_stem_matches().
         """
-        # Normalização completa de acentos (NFD) para bater com as chaves
-        # (sem acento) de LEXICAL_VARIATIONS -- um replace() parcial de
-        # ã/á/é deixava passar í/ó/ú/ê/ç etc. e nunca encontrava a entrada
-        # do dicionário para termos como "história".
-        termo_normalized = self._strip_accents(termo.lower())
-
-        # Tenta encontrar variação pré-definida
-        if termo_normalized in self.LEXICAL_VARIATIONS:
-            return self.LEXICAL_VARIATIONS[termo_normalized]
-
-        # Cria padrão automaticamente a partir do termo original
-        return rf'\b{re.escape(termo)}\w*\b'
+        self._require_stem_index(stem_index)
+        return self.stemming.get_stem_matches(stem_index, termo, search_fields, cartas)
 
     def search_lexical_variations(
         self,
         cartas: Dict,
         termo: str,
-        case_sensitive: bool = False
+        stem_index: Dict,
+        search_fields: Optional[Set[str]] = None
     ) -> Tuple[List[str], Dict[str, int]]:
         """
-        Busca por variações lexicais do termo.
+        Busca por variações lexicais (mesmo radical RSLP) do termo.
 
         Args:
             cartas: Dicionário de cartas
             termo: Termo a buscar
-            case_sensitive: Se True, considera maiúsculas/minúsculas
+            stem_index: Índice de stems pré-computado (StemmingEngine.load_index())
+            search_fields: Campos a considerar (None = todos os campos indexados)
 
         Returns:
             Tupla (lista de IDs encontrados, dict com contagem de ocorrências)
         """
-        pattern = self.get_variacoes_pattern(termo)
-        return self.search_regex(cartas, pattern, case_sensitive)
+        contagens = self.get_variacoes_matches(termo, stem_index, search_fields, cartas)
+        resultados = {cid: n for cid, n in contagens.items() if cid in cartas}
+
+        self.last_search_term = termo
+        self.last_results = resultados
+        return list(resultados.keys()), resultados
 
     def search_advanced(
         self,
@@ -172,7 +182,8 @@ class SearchEngine:
         query: str,
         case_sensitive: bool = False,
         use_variations: bool = True,
-        search_fields: Set[str] = None
+        search_fields: Set[str] = None,
+        stem_index: Optional[Dict] = None
     ) -> Tuple[List[str], Dict[str, int]]:
         """
         Busca avançada com suporte a operadores: aspas (frase), + (obrigatório), - (excluído), * (wildcard).
@@ -181,11 +192,16 @@ class SearchEngine:
             cartas: Dicionário de cartas
             query: String de busca com operadores
             case_sensitive: Considerar maiúsculas
-            use_variations: Usar variações lexicais
+            use_variations: Usar variações lexicais (radical RSLP -- requer stem_index)
             search_fields: Campos a buscar (None = todos, ["texto"] = apenas texto)
+            stem_index: Índice de stems pré-computado, obrigatório quando use_variations=True
+                        (StemmingEngine.load_index()). Ignorado se use_variations=False.
 
         Returns:
             Tupla (lista de IDs encontrados, dict com contagem de ocorrências)
+
+        Raises:
+            StemIndexUnavailable: use_variations=True e stem_index=None.
         """
         if search_fields is None:
             search_fields = {'texto', 'nome', 'destinatario', 'catalogo', 'indexacao', 'origem'}
@@ -193,11 +209,25 @@ class SearchEngine:
         resultados = {}
         tokens = self._parse_query(query)
 
+        # Resolve os termos de variação via índice de stems UMA VEZ (lookup O(1)
+        # por termo), em vez de tokenizar/radicalizar o texto de cada carta
+        # dentro do loop principal -- é o que torna a busca em modo "Variações"
+        # rápida mesmo sobre a base inteira.
+        stem_matches: Dict[str, Dict[str, int]] = {}
+        if use_variations:
+            self._require_stem_index(stem_index)
+            termos_variacao = set(
+                t for t in tokens['required'] + tokens['excluded'] + tokens['optional']
+                if '*' not in t
+            )
+            for term in termos_variacao:
+                stem_matches[term] = self.stemming.get_stem_matches(stem_index, term, search_fields, cartas)
+
         for carta_id, carta in cartas.items():
             carta_text = self._extract_carta_text(carta, search_fields, case_sensitive)
 
-            if self._matches_query(carta_text, tokens, case_sensitive, use_variations):
-                ocorrencias = self._count_occurrences(carta_text, tokens, case_sensitive, use_variations)
+            if self._matches_query(carta_id, carta_text, tokens, case_sensitive, use_variations, stem_matches):
+                ocorrencias = self._count_occurrences(carta_id, carta_text, tokens, case_sensitive, use_variations, stem_matches)
                 resultados[carta_id] = ocorrencias
 
         self.last_search_term = query
@@ -279,16 +309,24 @@ class SearchEngine:
                 texts.append(text)
         return ' '.join(texts)
 
-    def _matches_query(self, text: str, tokens: Dict, case_sensitive: bool, use_variations: bool) -> bool:
+    def _matches_query(
+        self,
+        carta_id: str,
+        text: str,
+        tokens: Dict,
+        case_sensitive: bool,
+        use_variations: bool,
+        stem_matches: Optional[Dict[str, Dict[str, int]]] = None
+    ) -> bool:
         """Verifica se o texto corresponde à query."""
         # Termos obrigatórios
         for term in tokens['required']:
-            if not self._term_in_text(text, term, case_sensitive, use_variations):
+            if not self._term_in_text(carta_id, text, term, case_sensitive, use_variations, stem_matches):
                 return False
 
         # Termos a excluir
         for term in tokens['excluded']:
-            if self._term_in_text(text, term, case_sensitive, use_variations):
+            if self._term_in_text(carta_id, text, term, case_sensitive, use_variations, stem_matches):
                 return False
 
         # Frases exatas
@@ -301,7 +339,7 @@ class SearchEngine:
         if tokens['optional']:
             found_any = False
             for term in tokens['optional']:
-                if self._term_in_text(text, term, case_sensitive, use_variations):
+                if self._term_in_text(carta_id, text, term, case_sensitive, use_variations, stem_matches):
                     found_any = True
                     break
             if not found_any:
@@ -309,7 +347,15 @@ class SearchEngine:
 
         return True
 
-    def _term_in_text(self, text: str, term: str, case_sensitive: bool, use_variations: bool) -> bool:
+    def _term_in_text(
+        self,
+        carta_id: str,
+        text: str,
+        term: str,
+        case_sensitive: bool,
+        use_variations: bool,
+        stem_matches: Optional[Dict[str, Dict[str, int]]] = None
+    ) -> bool:
         """Verifica se um termo está no texto."""
         search_term = term if case_sensitive else term.lower()
 
@@ -322,23 +368,30 @@ class SearchEngine:
             except:
                 return False
 
-        # Variações lexicais -- usa o mesmo padrão do highlight (get_variacoes_pattern)
-        # para garantir que matching e destaque nunca divirjam.
+        # Variações lexicais -- lookup O(1) no índice de stems pré-resolvido
+        # em search_advanced (evita tokenizar/radicalizar o texto da carta aqui).
         if use_variations:
-            pattern = self.get_variacoes_pattern(term)
-            flags = 0 if case_sensitive else re.IGNORECASE
-            try:
-                if re.search(pattern, text, flags):
-                    return True
-            except re.error:
-                pass
+            if stem_matches is None or term not in stem_matches:
+                raise StemIndexUnavailable(
+                    "Busca em modo 'Variações' requer o índice de stems pré-computado. "
+                    "Use o botão '⚡ Pré-computar Índice de Stems' na aba Configurações."
+                )
+            return carta_id in stem_matches[term]
 
-        # Busca com normalização de acentos (insensível a acentuação)
+        # Modo "Exato": substring com normalização de acentos (insensível a acentuação)
         norm_text = SearchEngine._strip_accents(text)
         norm_term = SearchEngine._strip_accents(search_term)
         return norm_term in norm_text
 
-    def _count_occurrences(self, text: str, tokens: Dict, case_sensitive: bool, use_variations: bool = False) -> int:
+    def _count_occurrences(
+        self,
+        carta_id: str,
+        text: str,
+        tokens: Dict,
+        case_sensitive: bool,
+        use_variations: bool = False,
+        stem_matches: Optional[Dict[str, Dict[str, int]]] = None
+    ) -> int:
         """Conta ocorrências dos termos no texto."""
         count = 0
         flags = 0 if case_sensitive else re.IGNORECASE
@@ -355,15 +408,16 @@ class SearchEngine:
                     pass
                 continue
 
-            # Variações lexicais -- conta todas as formas que casaram,
-            # não apenas a substring literal do termo buscado.
+            # Variações lexicais -- soma as contagens (por campo já agregadas)
+            # do índice de stems pré-resolvido, não apenas a substring literal.
             if use_variations:
-                pattern = self.get_variacoes_pattern(term)
-                try:
-                    count += len(re.findall(pattern, text, flags))
-                    continue
-                except re.error:
-                    pass
+                if stem_matches is None or term not in stem_matches:
+                    raise StemIndexUnavailable(
+                        "Busca em modo 'Variações' requer o índice de stems pré-computado. "
+                        "Use o botão '⚡ Pré-computar Índice de Stems' na aba Configurações."
+                    )
+                count += stem_matches[term].get(carta_id, 0)
+                continue
 
             count += text.count(search_term)
 
@@ -378,7 +432,8 @@ class SearchEngine:
         texto: str,
         termo: str,
         case_sensitive: bool = False,
-        use_regex: bool = False
+        use_regex: bool = False,
+        use_stemming: bool = False
     ) -> List[Tuple[int, int]]:
         """
         Encontra posições exatas do termo no texto.
@@ -388,6 +443,9 @@ class SearchEngine:
             termo: Termo ou padrão
             case_sensitive: Considerar maiúsculas
             use_regex: Usar regex
+            use_stemming: Destacar palavras do texto que compartilham o
+                          radical RSLP de `termo` (modo "Variações"), em vez
+                          de casar `termo` literalmente ou via regex.
 
         Returns:
             Lista de tuplas (início, fim) das posições
@@ -395,6 +453,9 @@ class SearchEngine:
         posicoes = []
 
         try:
+            if use_stemming:
+                return self.stemming.get_stem_word_positions(texto, termo)
+
             if use_regex:
                 flags = 0 if case_sensitive else re.IGNORECASE
                 for match in re.finditer(termo, texto, flags):
@@ -434,7 +495,8 @@ class SearchEngine:
         termo: str,
         cor: str = "yellow",
         case_sensitive: bool = False,
-        use_regex: bool = False
+        use_regex: bool = False,
+        use_stemming: bool = False
     ) -> str:
         """
         Destaca o termo no texto com tags HTML.
@@ -446,11 +508,12 @@ class SearchEngine:
             cor: Cor do destaque
             case_sensitive: Considerar maiúsculas
             use_regex: Usar regex
+            use_stemming: Destacar variações lexicais (mesmo radical RSLP)
 
         Returns:
             Texto com destaques em HTML
         """
-        posicoes = self.get_matches_positions(texto, termo, case_sensitive, use_regex)
+        posicoes = self.get_matches_positions(texto, termo, case_sensitive, use_regex, use_stemming)
 
         if not posicoes:
             return texto
@@ -474,7 +537,8 @@ class SearchEngine:
         termos: List[str],
         cores: List[str],
         case_sensitive: bool = False,
-        use_regex: bool = False
+        use_regex: bool = False,
+        use_stemming: bool = False
     ) -> str:
         """
         Destaca múltiplos termos com cores diferentes.
@@ -486,6 +550,7 @@ class SearchEngine:
             cores: Lista de cores
             case_sensitive: Considerar maiúsculas
             use_regex: Usar regex
+            use_stemming: Destacar variações lexicais (mesmo radical RSLP)
 
         Returns:
             Texto com múltiplos destaques
@@ -494,7 +559,7 @@ class SearchEngine:
         todas_posicoes = []
 
         for termo, cor in zip(termos, cores):
-            posicoes = self.get_matches_positions(texto, termo, case_sensitive, use_regex)
+            posicoes = self.get_matches_positions(texto, termo, case_sensitive, use_regex, use_stemming)
             for start, end in posicoes:
                 todas_posicoes.append((start, end, cor, texto[start:end]))
 
@@ -528,13 +593,15 @@ class SearchEngine:
             "ocorrencias": self.last_results
         }
 
-    def get_variacoes_info(self, termo: str) -> List[str]:
-        """Retorna lista de variações lexicais que serão pesquisadas."""
-        pattern = self.get_variacoes_pattern(termo)
-        match = re.search(r'\(\?:(.*?)\)', pattern)
-        if match:
-            return match.group(1).split('|')
-        return [termo]
+    def get_variacoes_info(self, termo: str, stem_index: Dict) -> List[str]:
+        """
+        Retorna as formas de superfície (palavras reais da base) que
+        compartilham o radical RSLP de `termo`, conforme observado no
+        índice pré-computado -- ou seja, as variações efetivamente
+        encontradas, não uma lista teórica pré-definida.
+        """
+        formas = self.stemming.get_forms(stem_index, termo)
+        return list(formas) if formas else [termo]
 
     def get_wildcard_matches(self, cartas: Dict, query: str, case_sensitive: bool = False) -> Dict[str, int]:
         """Retorna contagem de palavras que corresponderam a termos com wildcard (*)."""

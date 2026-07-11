@@ -44,6 +44,12 @@ class SemanticEngine:
         self.cache_dir = Path(cache_dir)
         self._model = None  # carregado sob demanda
 
+        # Cache em memória da última leitura válida do .npz (evita reler/
+        # descomprimir ~200 MB do disco a cada busca dentro da mesma sessão)
+        self._cached_embeddings: Optional[np.ndarray] = None
+        self._cached_ids: Optional[List[str]] = None
+        self._cached_cache_path: Optional[Path] = None
+
     # ------------------------------------------------------------------ #
     # Métodos internos                                                     #
     # ------------------------------------------------------------------ #
@@ -216,6 +222,14 @@ class SemanticEngine:
                 ids=np.array(ids, dtype=object)
             )
 
+            # Invalida o cache em memória: se a base foi reindexada com o
+            # mesmo conjunto de IDs, os vetores antigos guardados em memória
+            # não devem ser servidos por engano na próxima get_embeddings().
+            if self._cached_cache_path == cache_path:
+                self._cached_embeddings = None
+                self._cached_ids = None
+                self._cached_cache_path = None
+
             tamanho_mb = cache_path.stat().st_size / (1024 * 1024)
             return (
                 True,
@@ -241,6 +255,13 @@ class SemanticEngine:
         ou estiver desatualizado, lança FileNotFoundError com orientação clara.
         A computação deve ser iniciada exclusivamente pelo botão na interface.
 
+        A matriz e os ids da última leitura bem-sucedida ficam guardados em
+        memória (self._cached_*) e são reaproveitados em chamadas seguintes
+        para o mesmo cache_path com os mesmos IDs de base, evitando reler e
+        descomprimir o .npz (~200 MB) a cada busca. Se a base for trocada ou
+        o cache for reindexado com um conjunto de IDs diferente, a leitura do
+        disco volta a acontecer normalmente.
+
         Args:
             cartas:  Dicionário {id: dados} com as cartas atuais (para validação).
             db_name: Nome do arquivo da base de dados.
@@ -255,6 +276,16 @@ class SemanticEngine:
         """
         cache_path = self._get_cache_path(db_name)
         carta_ids = list(cartas.keys())
+
+        # Reaproveita a leitura em memória se for para o mesmo cache_path e
+        # os IDs da base atual baterem com os IDs já carregados.
+        if (
+            self._cached_embeddings is not None
+            and self._cached_ids is not None
+            and self._cached_cache_path == cache_path
+            and set(self._cached_ids) == set(carta_ids)
+        ):
+            return self._cached_embeddings, self._cached_ids
 
         if not cache_path.exists():
             raise FileNotFoundError(
@@ -272,6 +303,11 @@ class SemanticEngine:
         dados = np.load(cache_path, allow_pickle=True)
         embeddings = dados['embeddings']      # shape (n, 768), float32
         ids = dados['ids'].tolist()           # list[str]
+
+        self._cached_embeddings = embeddings
+        self._cached_ids = ids
+        self._cached_cache_path = cache_path
+
         return embeddings, ids
 
     # ------------------------------------------------------------------ #

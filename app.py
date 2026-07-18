@@ -31,7 +31,7 @@ from modules import (
     build_semantic_csv_cached,
 )
 from modules.config_manager import EMBEDDING_MODEL
-from modules.ui_manager import configure_page_style, get_color_scheme
+from modules.ui_manager import configure_page_style, get_color_scheme, get_plotly_color_palette
 
 
 # ============================================================================
@@ -193,7 +193,7 @@ _todas_cartas = dm.get_todas_cartas()
 
 with st.sidebar:
     st.markdown("# 📚 **Historicidades Democráticas**")
-    st.markdown("<sub style='color: #999; font-size: 18px;'>Por Walderez Ramalho</sub>", unsafe_allow_html=True)
+    st.markdown("<sub style='color: var(--text-secondary); font-size: 18px;'>Por Walderez Ramalho</sub>", unsafe_allow_html=True)
     st.markdown("---")
 
     # Seletor de base de dados
@@ -2023,6 +2023,7 @@ with tab6:
         _card_ids_t6 = tuple(sorted(cartas_filtradas.keys()))
         _cd = compute_chart_data_cached(_db_name, _card_ids_t6, len(_todas_cartas))
         colunas_disponiveis = set(_cd['_columns'])
+        _plotly_colors = get_plotly_color_palette()
 
         # ========== SEÇÃO A: PERFIL DEMOGRÁFICO ==========
         with st.expander("👤 Perfil Demográfico", expanded=True):
@@ -2033,31 +2034,37 @@ with tab6:
                 with col1:
                     if 'sexo' in _cd:
                         st.plotly_chart(px.pie(values=_cd['sexo']['values'], names=_cd['sexo']['names'],
-                                               hole=0.4, title="Distribuição por Sexo"), use_container_width=True)
+                                               hole=0.4, title="Distribuição por Sexo",
+                                               color_discrete_sequence=_plotly_colors), use_container_width=True)
                     if 'estado_civil' in _cd:
                         st.plotly_chart(px.pie(values=_cd['estado_civil']['values'], names=_cd['estado_civil']['names'],
-                                               hole=0.4, title="Estado Civil"), use_container_width=True)
+                                               hole=0.4, title="Estado Civil",
+                                               color_discrete_sequence=_plotly_colors), use_container_width=True)
                 with col2:
                     if 'faixa_etaria' in _cd:
                         _d = _cd['faixa_etaria']
                         _fig = px.bar(x=_d['names'], y=_d['values'], title="Faixa Etária",
-                                      labels={'x': 'Faixa Etária', 'y': 'Quantidade'})
+                                      labels={'x': 'Faixa Etária', 'y': 'Quantidade'},
+                                      color_discrete_sequence=[_plotly_colors[0]])
                         _fig.update_xaxes(tickangle=-45)
                         st.plotly_chart(_fig, use_container_width=True)
                     if 'morador' in _cd:
                         st.plotly_chart(px.pie(values=_cd['morador']['values'], names=_cd['morador']['names'],
-                                               hole=0.4, title="Zona (Urbana/Rural)"), use_container_width=True)
+                                               hole=0.4, title="Zona (Urbana/Rural)",
+                                               color_discrete_sequence=_plotly_colors), use_container_width=True)
 
             col3, col4 = st.columns(2)
             with col3:
                 if 'instrucao' in _cd:
                     _d = _cd['instrucao']
-                    st.plotly_chart(px.bar(x=_d['values'], y=_d['names'], orientation='h', title="Escolaridade"),
+                    st.plotly_chart(px.bar(x=_d['values'], y=_d['names'], orientation='h', title="Escolaridade",
+                                           color_discrete_sequence=[_plotly_colors[0]]),
                                     use_container_width=True)
             with col4:
                 if 'faixa_renda' in _cd:
                     _d = _cd['faixa_renda']
-                    st.plotly_chart(px.bar(x=_d['values'], y=_d['names'], orientation='h', title="Faixa de Renda"),
+                    st.plotly_chart(px.bar(x=_d['values'], y=_d['names'], orientation='h', title="Faixa de Renda",
+                                           color_discrete_sequence=[_plotly_colors[0]]),
                                     use_container_width=True)
 
         # ========== SEÇÃO B: LOCALIDADE ==========
@@ -2070,7 +2077,8 @@ with tab6:
                     if 'uf' in _cd:
                         _d = _cd['uf']
                         _fig = px.bar(x=_d['names'][:15], y=_d['values'][:15],
-                                      title="Cartas por UF (Top 15)", labels={'x': 'Estado', 'y': 'Quantidade'})
+                                      title="Cartas por UF (Top 15)", labels={'x': 'Estado', 'y': 'Quantidade'},
+                                      color_discrete_sequence=[_plotly_colors[0]])
                         _fig.update_xaxes(tickangle=-45)
                         st.plotly_chart(_fig, use_container_width=True)
                 with col2:
@@ -2085,7 +2093,7 @@ with tab6:
                     _uf_df = pd.DataFrame({'Estado': _d['names'][::-1], 'Quantidade': _d['values'][::-1]})
                     st.plotly_chart(px.bar(_uf_df, x='Quantidade', y='Estado', orientation='h',
                                            title="Distribuição Geográfica das Cartas por Estado",
-                                           color='Quantidade', color_continuous_scale='Viridis'),
+                                           color='Quantidade', color_continuous_scale=['#2b2d33', '#d97706']),
                                     use_container_width=True)
 
         # ========== SEÇÃO C: CONTEÚDO TEMÁTICO ==========
@@ -2099,24 +2107,28 @@ with tab6:
                         _d = _cd['atividade']
                         st.plotly_chart(px.bar(x=_d['values'], y=_d['names'], orientation='h',
                                                title="Atividade/Ocupação",
-                                               labels={'x': 'Quantidade', 'y': 'Atividade'}),
+                                               labels={'x': 'Quantidade', 'y': 'Atividade'},
+                                               color_discrete_sequence=[_plotly_colors[0]]),
                                         use_container_width=True)
                     if 'origem' in _cd:
                         _d = _cd['origem']
                         _fig = px.bar(x=_d['names'], y=_d['values'], title="Cartas por Origem (Lote)",
-                                      labels={'x': 'Origem', 'y': 'Quantidade'})
+                                      labels={'x': 'Origem', 'y': 'Quantidade'},
+                                      color_discrete_sequence=[_plotly_colors[0]])
                         _fig.update_xaxes(tickangle=-45)
                         st.plotly_chart(_fig, use_container_width=True)
                 with col2:
                     if 'catalogo' in _cd:
                         _d = _cd['catalogo']
                         st.plotly_chart(px.bar(x=_d['values'][:15], y=_d['names'][:15], orientation='h',
-                                               title="Catálogos Mais Frequentes (Top 15)"),
+                                               title="Catálogos Mais Frequentes (Top 15)",
+                                               color_discrete_sequence=[_plotly_colors[0]]),
                                         use_container_width=True)
                     if 'indexacao' in _cd:
                         _d = _cd['indexacao']
                         st.plotly_chart(px.bar(x=_d['values'][:20], y=_d['names'][:20], orientation='h',
-                                               title="Indexações Mais Frequentes (Top 20)"),
+                                               title="Indexações Mais Frequentes (Top 20)",
+                                               color_discrete_sequence=[_plotly_colors[0]]),
                                         use_container_width=True)
 
     else:
@@ -3274,7 +3286,7 @@ with tab9:
 
 st.markdown("---")
 st.markdown("""
-<div style="text-align: center; color: #666; font-size: 12px; padding: 20px;">
+<div style="text-align: center; color: var(--text-secondary); font-size: 12px; padding: 20px; border-top: 1px solid var(--accent-color); margin-top: 8px;">
     <p>📚 <strong>Historicidades Democráticas</strong> - Plataforma de Análise de Documentos Históricos</p>
     <p>Desenvolvido para preservar e analisar correspondências constitucionais</p>
 </div>

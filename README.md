@@ -256,20 +256,21 @@ Toda a sessão é salva automaticamente em `sessions/current_session.json`:
 Em `modules/ui_manager.py`, modifique a função `configure_page_style()` (seção `:root`):
 
 ```css
---primary-color: #1e3a8a;      /* Azul primário */
---secondary-color: #3b82f6;    /* Azul secundário */
---accent-color: #fbbf24;       /* Amarelo destaque */
---text-primary: #1f2937;       /* Texto principal */
---text-secondary: #6b7280;     /* Texto secundário */
---bg-light: #f9fafb;           /* Fundo claro */
---border-color: #e5e7eb;       /* Cor de bordas */
+--primary-color: #2b2d33;        /* Grafite primário */
+--primary-hover: #45474e;        /* Grafite hover */
+--accent-color: #d97706;         /* Âmbar destaque */
+--accent-hover: #b45309;         /* Âmbar hover */
+--text-primary: #1f2937;         /* Texto principal */
+--text-secondary: #6b7280;       /* Texto secundário */
+--bg-light: #f4f4f2;             /* Fundo claro */
+--border-color: #ddd9d2;         /* Cor de bordas */
 ```
 
 Ou acesse o esquema de cores programaticamente:
 
 ```python
 from modules.ui_manager import get_color_scheme
-colors = get_color_scheme()  # Retorna dict com 11 cores
+colors = get_color_scheme()  # Retorna dict com 13 cores
 ```
 
 ### Adicionar Variações Lexicais

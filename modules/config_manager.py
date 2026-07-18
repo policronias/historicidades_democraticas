@@ -79,17 +79,18 @@ MAX_PAGE_SIZE = 50
 
 # Temas e estilos
 COLORS = {
-    'primary': '#1e3a8a',
-    'secondary': '#3b82f6',
-    'accent': '#fbbf24',
+    'primary': '#2b2d33',
+    'primary_hover': '#45474e',
+    'accent': '#d97706',
+    'accent_hover': '#b45309',
     'success': '#10b981',
     'warning': '#f59e0b',
     'danger': '#ef4444',
     'info': '#0ea5e9',
     'text_primary': '#1f2937',
     'text_secondary': '#6b7280',
-    'bg_light': '#f9fafb',
-    'border': '#e5e7eb',
+    'bg_light': '#f4f4f2',
+    'border': '#ddd9d2',
 }
 
 # Mensagens padrão

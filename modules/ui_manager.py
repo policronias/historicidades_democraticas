@@ -13,15 +13,18 @@ def configure_page_style():
     """
     st.markdown("""
 <style>
-    /* Paleta de cores: azul/cinza acadêmico */
+    @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap');
+
+    /* Paleta de cores: grafite/âmbar contemporâneo */
     :root {
-        --primary-color: #1e3a8a;
-        --secondary-color: #3b82f6;
-        --accent-color: #fbbf24;
+        --primary-color: #2b2d33;
+        --primary-hover: #45474e;
+        --accent-color: #d97706;
+        --accent-hover: #b45309;
         --text-primary: #1f2937;
         --text-secondary: #6b7280;
-        --bg-light: #f9fafb;
-        --border-color: #e5e7eb;
+        --bg-light: #f4f4f2;
+        --border-color: #ddd9d2;
     }
 
     /* Fonte e espaçamento base */
@@ -57,7 +60,7 @@ def configure_page_style():
     }
 
     .streamlit-expanderHeader:hover {
-        background-color: #f3f4f6;
+        background-color: #eeece7;
     }
 
     /* Buttons */
@@ -72,8 +75,8 @@ def configure_page_style():
     }
 
     .stButton > button:hover {
-        background-color: var(--secondary-color);
-        box-shadow: 0 4px 6px rgba(30, 58, 138, 0.15);
+        background-color: var(--primary-hover);
+        box-shadow: 0 4px 6px rgba(217, 119, 6, 0.18);
     }
 
     /* Input fields */
@@ -87,8 +90,8 @@ def configure_page_style():
 
     .stTextInput > div > div > input:focus,
     .stTextArea > div > div > textarea:focus {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.15);
     }
 
     /* Dataframe / Table */
@@ -107,7 +110,7 @@ def configure_page_style():
 
     /* Sidebar */
     .sidebar .sidebar-content {
-        background-color: #f3f4f6;
+        background-color: #eeece7;
     }
 
     /* Success/Error messages */
@@ -138,8 +141,17 @@ def configure_page_style():
 
     /* Headers */
     h1, h2, h3 {
+        font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif;
         color: var(--primary-color);
         font-weight: 600;
+        letter-spacing: 0.015em;
+    }
+
+    /* Cabeçalho da sidebar — filete âmbar, efeito "cabeçalho de carta/documento" */
+    section[data-testid="stSidebar"] h1 {
+        border-bottom: 3px solid var(--accent-color);
+        padding-bottom: 14px;
+        margin-bottom: 4px;
     }
 
     /* Horizontal line */
@@ -188,23 +200,48 @@ def show_footer():
         st.caption("✨ Research Platform")
 
 
+def get_plotly_color_palette() -> list:
+    """
+    Retorna a paleta de cores para gráficos Plotly.
+    Alinhada à paleta do programa (grafite/âmbar) com tons sóbrios.
+
+    Returns:
+        Lista de cores em formato hex para uso em color_discrete_sequence
+    """
+    return [
+        '#d97706',  # Âmbar primário
+        '#2b2d33',  # Grafite primário
+        '#f59e0b',  # Âmbar claro
+        '#92400e',  # Marrom âmbar escuro
+        '#45474e',  # Grafite claro
+        '#1f2937',  # Grafite escuro
+        '#b45309',  # Âmbar hover
+        '#5a5c63',  # Cinza-grafite
+        '#dc2626',  # Vermelho sóbrio
+        '#0369a1',  # Azul sóbrio
+        '#65a30d',  # Verde sóbrio
+        '#7c3aed',  # Roxo sóbrio
+    ]
+
+
 def get_color_scheme() -> dict:
     """
     Retorna o esquema de cores usado na aplicação.
-    
+
     Returns:
         Dicionário com variáveis de cor
     """
     return {
-        'primary': '#1e3a8a',
-        'secondary': '#3b82f6',
-        'accent': '#fbbf24',
+        'primary': '#2b2d33',
+        'primary_hover': '#45474e',
+        'accent': '#d97706',
+        'accent_hover': '#b45309',
         'success': '#10b981',
         'warning': '#f59e0b',
         'danger': '#ef4444',
         'info': '#0ea5e9',
         'text_primary': '#1f2937',
         'text_secondary': '#6b7280',
-        'bg_light': '#f9fafb',
-        'border': '#e5e7eb',
+        'bg_light': '#f4f4f2',
+        'border': '#ddd9d2',
     }

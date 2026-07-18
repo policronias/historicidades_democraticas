@@ -42,7 +42,7 @@ Plataforma completa de análise de documentos históricos construída com **Stre
 - Adicionar notas rápidas de cartas ao caderno
 - Persistência automática
 
-### 7. **8 Abas Principais**
+### 7. **9 Abas Principais**
 - 🔍 **Explorar Cartas**: navegação + metadados + anotações
 - 📓 **Caderno**: notas de pesquisa + anotações rápidas
 - 🗂️ **Séries Temáticas**: criar, editar, visualizar séries + download
@@ -51,6 +51,7 @@ Plataforma completa de análise de documentos históricos construída com **Stre
 - 📊 **Gráficos e Tabelas**: análise visual dos dados
 - 🎯 **Filtros**: filtro avançado por campo + painel de séries
 - 🧠 **Busca Semântica**: busca por similaridade semântica
+- 📈 **Análise de Frequência**: análise comparativa de múltiplos termos
 
 ### 8. **Múltiplas Bases de Dados**
 - Carregar/alternar entre bases JSON
@@ -146,24 +147,30 @@ A aplicação será aberta em `http://localhost:8501`
 
 ```
 historicidades_democraticas/
-├── app.py                          # Aplicação principal Streamlit (2800+ linhas)
+├── app.py                          # Aplicação principal Streamlit (3281 linhas)
 ├── requirements.txt                # Dependências Python
-├── cartas_db.json                  # Base de dados JSON
+├── cartas_db.json                  # Base de dados JSON (~72k cartas)
 ├── CLAUDE.md                       # Referência de arquitetura
 ├── README.md                       # Este arquivo
 ├── modules/
-│   ├── __init__.py                # Exports principais
+│   ├── __init__.py                # Exports de todos os módulos
 │   ├── data_manager.py            # CRUD, índices, load/upload de bases
 │   ├── search_engine.py           # Busca avançada, variações, wildcard
-│   ├── semantic_engine.py         # Embeddings + busca semântica
-│   ├── series_manager.py          # Séries, índice invertido O(1)
-│   ├── annotation_manager.py      # Anotações, caderno de pesquisa
-│   ├── export_manager.py          # CSV, JSON, Parquet, HTML, PDF, ZIP
-│   ├── cache_manager.py           # Cache para DataFrames, gráficos
-│   ├── ui_manager.py              # Estilos, componentes reutilizáveis
-│   └── config_manager.py          # Paths, campos, constantes, paleta
+│   ├── semantic_engine.py         # Embeddings RoBERTa + busca semântica
+│   ├── series_manager.py          # Séries temáticas, índice invertido O(1)
+│   ├── annotation_manager.py      # Anotações por carta, caderno de pesquisa
+│   ├── export_manager.py          # Exportação: CSV, JSON, Parquet, HTML, PDF, ZIP
+│   ├── frequency_analyzer.py      # Análise comparativa de frequência de termos
+│   ├── stemming_engine.py         # Processamento de stemming (suporta highlight)
+│   ├── cache_manager.py           # Cache consolidado: DataFrames, gráficos, CSV
+│   ├── ui_manager.py              # Estilos CSS centralizados, paleta de cores
+│   └── config_manager.py          # Constantes, paths, paleta, grupos de campos
+├── scripts/
+│   ├── backup_sessao.py           # Script: backup manual da sessão
+│   ├── consolidar_buscas.py       # Script: consolidar múltiplos CSVs de busca
+│   └── precompute_embeddings.py   # Script: pré-computar embeddings (CLI)
 └── sessions/
-    └── current_session.json       # Sessão atual (auto-persisted)
+    └── current_session.json       # Sessão atual (anotações, séries, caderno)
 ```
 
 ## 🔧 Arquitetura Técnica
@@ -246,12 +253,23 @@ Toda a sessão é salva automaticamente em `sessions/current_session.json`:
 ## 🎨 Customização
 
 ### Alterar Paleta de Cores
-No `app.py`, modifique a seção `<style>`:
+Em `modules/ui_manager.py`, modifique a função `configure_page_style()` (seção `:root`):
 
 ```css
 --primary-color: #1e3a8a;      /* Azul primário */
 --secondary-color: #3b82f6;    /* Azul secundário */
 --accent-color: #fbbf24;       /* Amarelo destaque */
+--text-primary: #1f2937;       /* Texto principal */
+--text-secondary: #6b7280;     /* Texto secundário */
+--bg-light: #f9fafb;           /* Fundo claro */
+--border-color: #e5e7eb;       /* Cor de bordas */
+```
+
+Ou acesse o esquema de cores programaticamente:
+
+```python
+from modules.ui_manager import get_color_scheme
+colors = get_color_scheme()  # Retorna dict com 11 cores
 ```
 
 ### Adicionar Variações Lexicais

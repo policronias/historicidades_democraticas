@@ -14,21 +14,30 @@ Plataforma **Historicidades Democráticas** — análise, busca semântica e arq
 | 6 | 📊 Gráficos | Gráficos Plotly interativos (demográficos e geográficos) |
 | 7 | 🎯 Filtros | Filtragem multidimensional (sexo, UF, faixa etária, renda…) |
 | 8 | 🧠 Semântica | Busca por similaridade RoBERTa, paginada, com threshold |
+| 9 | 📈 Frequência | Análise comparativa de múltiplos termos, ocorrências, visualização |
 
-## Módulos (`modules/`)
+## Módulos (`modules/`) — refatorados para modularidade
 
 - `data_manager.py` — CRUD cartas, índices (nome, série), load/upload/switch de base
 - `search_engine.py` — busca avançada (`"frase"`, `+obrig`, `-excl`, `termo*`), variações morfológicas, highlight regex
-- `semantic_engine.py` — embeddings `paraphrase-multilingual-mpnet-base-v2`, cache `.npy` por base
+- `semantic_engine.py` — embeddings `paraphrase-multilingual-mpnet-base-v2`, busca por similaridade, cache
 - `series_manager.py` — séries temáticas; índice invertido O(1) `carta_id → [séries]`
 - `annotation_manager.py` — anotações por carta + caderno; persistência em `sessions/current_session.json`
-- `export_manager.py` — CSV, JSON, **Parquet** (pyarrow), HTML+Plotly, PDF (reportlab+matplotlib), ZIP
-- `cache_manager.py` — `@st.cache_data` (ttl=60) para DataFrames e dados de gráficos
-- `ui_manager.py` — CSS global, cabeçalho, paleta de cores
-- `config_manager.py` — paths, constantes, `get_field_groups()` para filtros
+- `export_manager.py` — exportação: CSV, JSON, **Parquet** (pyarrow), HTML+Plotly, PDF (reportlab+matplotlib), ZIP
+- `frequency_analyzer.py` — análise de frequência de termos, múltiplas cores, gráficos Plotly
+- `stemming_engine.py` — processamento de stemming/stemming com RSLP
+- **`cache_manager.py` (consolidado)** — funções cacheadas: `build_df_fast()`, `compute_chart_data_cached()`, `build_semantic_csv_cached()`
+- **`ui_manager.py` (consolidado)** — CSS centralizado, `configure_page_style()`, `get_color_scheme()`, headers/footers
+- `config_manager.py` — constantes, paths, paleta de cores, grupos de campos
 
 ## Arquitetura — decisões não-óbvias
 
+### Refatoração (2026-07)
+- **`cache_manager.py` consolidado** — `build_df_fast()`, `compute_chart_data_cached()`, `build_semantic_csv_cached()` importadas de `modules.cache_manager`, não duplicadas em `app.py`
+- **`ui_manager.py` integrado** — `configure_page_style()` chamada no início de `app.py`; CSS removido de inline; `get_color_scheme()` acessível para customização
+- **Redução de `app.py`** — 3378 → 3281 linhas (-97); cache e UI modulares; melhor separação de responsabilidades
+
+### Lógica de Negócio
 - **Sidebar "Gerenciar Séries"** é compartilhada entre abas 1, 7 e 8 via `sidebar_series_context` no session state. Não duplicar lógica de séries por aba.
 - **PDF usa matplotlib** para gráficos embutidos — reportlab não suporta Plotly. Gráficos HTML e PDF são gerados por caminhos distintos em `export_manager.py`.
 - **Parquet** exporta coluna `series_tematicas` com séries separadas por ` | `; requer construção do índice invertido antes da chamada (`series_idx` dict).

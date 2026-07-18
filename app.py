@@ -25,78 +25,18 @@ from modules import (
     ExportManager,
     SemanticEngine,
     StemmingEngine,
-    FrequencyAnalyzer
+    FrequencyAnalyzer,
+    build_df_fast,
+    compute_chart_data_cached,
+    build_semantic_csv_cached,
 )
 from modules.config_manager import EMBEDDING_MODEL
+from modules.ui_manager import configure_page_style, get_color_scheme
 
 
 # ============================================================================
 # CONFIGURAÇÃO STREAMLIT
 # ============================================================================
-
-def build_df_fast(card_ids: tuple, _todas_cartas: dict) -> "pd.DataFrame":
-    """Constrói DataFrame rápido a partir de IDs (sem cache por tamanho de dados)."""
-    cartas = {k: _todas_cartas[k] for k in card_ids if k in _todas_cartas}
-    df = pd.DataFrame(cartas.values())
-    df.replace("nan", None, inplace=True)
-    df.replace("None", None, inplace=True)
-    df.fillna("Não informado", inplace=True)
-    return df
-
-
-@st.cache_data(ttl=3600)
-def compute_chart_data_cached(db_name: str, card_ids: tuple, _todas_cartas_size: int) -> dict:
-    """Pré-computa todos os value_counts para geração de gráficos. Usa tamanho como proxy de cache key."""
-    df = build_df_fast(card_ids, st.session_state.data_manager.get_todas_cartas())
-    cols = set(df.columns)
-    result: dict = {'_columns': list(cols)}
-    for campo in ['sexo', 'estado_civil', 'faixa_etaria', 'morador', 'instrucao',
-                  'faixa_renda', 'uf', 'municipio', 'atividade', 'origem', 'catalogo', 'indexacao']:
-        if campo in cols:
-            vc = df[campo].value_counts()
-            result[campo] = {'names': vc.index.tolist(), 'values': vc.values.tolist()}
-    return result
-
-
-@st.cache_data
-def build_semantic_csv_cached(card_ids: tuple, scores: tuple, db_name: str, _all_cartas: dict, _series: dict = None) -> bytes:
-    """Gera CSV dos resultados da busca semântica. Cache evita reconstrução a cada render."""
-    # Índice carta_id → séries
-    carta_series_idx: dict = {}
-    if _series:
-        for ns, si in _series.items():
-            for cid in si['cartas']:
-                carta_series_idx.setdefault(cid, []).append(ns)
-        for cid in carta_series_idx:
-            carta_series_idx[cid] = sorted(carta_series_idx[cid])
-
-    buf = StringIO()
-    writer = csv.writer(buf, delimiter=';', quoting=csv.QUOTE_ALL)
-    writer.writerow(['SERIES_TEMATICAS', 'RANK', 'LINHA_BASE_SAIC', 'NOME', 'DESTINATARIO',
-                     'CATALOGO', 'INDEXACAO', 'ORIGEM', 'DATA',
-                     'FORMUL', 'DV', 'DATA2', 'MUNICIPIO', 'UF', 'CEP', 'SEXO', 'MORADOR', 'INSTRUCAO',
-                     'ESTADO CIVIL', 'FAIXA ETÁRIA', 'FAIXA RENDA', 'ATIVIDADE', 'SCORE', 'TEXTO'])
-    scores_dict = dict(zip(card_ids, scores))
-    for rank, carta_id in enumerate(card_ids, 1):
-        carta = _all_cartas.get(carta_id)
-        if carta:
-            series_str = ' | '.join(carta_series_idx.get(carta_id, []))
-            writer.writerow([
-                series_str, rank, carta_id,
-                carta.get('nome', ''), carta.get('destinatario', ''),
-                carta.get('catalogo', ''), carta.get('indexacao', ''),
-                carta.get('origem', ''), carta.get('data', ''),
-                carta.get('formul', ''), carta.get('dv', ''),
-                carta.get('data2', ''), carta.get('municipio', ''),
-                carta.get('uf', ''), carta.get('cep', ''),
-                carta.get('sexo', ''), carta.get('morador', ''),
-                carta.get('instrucao', ''), carta.get('estado_civil', ''),
-                carta.get('faixa_etaria', ''), carta.get('faixa_renda', ''),
-                carta.get('atividade', ''),
-                f"{scores_dict.get(carta_id, 0):.4f}",
-                (carta.get('texto', '') or '').replace('\n', ' ')
-            ])
-    return buf.getvalue().encode('utf-8-sig')
 
 st.set_page_config(
     page_title="Historicidades Democráticas",
@@ -105,105 +45,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CSS personalizado para design acadêmico
-st.markdown("""
-<style>
-    /* Paleta de cores: azul/cinza acadêmico */
-    :root {
-        --primary-color: #1e3a8a;
-        --secondary-color: #3b82f6;
-        --accent-color: #fbbf24;
-        --bg-color: #f9fafb;
-        --border-color: #e5e7eb;
-    }
-
-    /* Customização geral */
-    .main {
-        background-color: #ffffff;
-    }
-
-    /* Sidebar */
-    [data-testid="stSidebar"] {
-        background-color: #f3f4f6;
-    }
-
-    /* Títulos */
-    h1, h2, h3 {
-        color: #1e3a8a;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-
-    /* Abas */
-    .stTabs [data-baseweb="tab-list"] button {
-        background-color: #e5e7eb;
-        color: #374151;
-        border-radius: 4px 4px 0 0;
-    }
-
-    .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {
-        background-color: #3b82f6;
-        color: white;
-    }
-
-    /* Cards */
-    .card {
-        background-color: #f9fafb;
-        border-left: 4px solid #3b82f6;
-        padding: 15px;
-        border-radius: 4px;
-        margin: 10px 0;
-    }
-
-    /* Inputs */
-    .stTextInput input, .stTextArea textarea, .stSelectbox select {
-        border-color: #d1d5db !important;
-        border-radius: 4px !important;
-    }
-
-    /* Botões */
-    .stButton > button {
-        background-color: #3b82f6;
-        color: white;
-        border-radius: 4px;
-        border: none;
-        padding: 8px 16px;
-    }
-
-    .stButton > button:hover {
-        background-color: #2563eb;
-    }
-
-    /* Buttons secundários */
-    .stButton.secondary > button {
-        background-color: #6b7280;
-    }
-
-    /* Métrica */
-    .metric-container {
-        background-color: #f0f9ff;
-        padding: 15px;
-        border-radius: 4px;
-        text-align: center;
-        border: 1px solid #bfdbfe;
-    }
-
-    /* Sucesso/aviso */
-    .stSuccess {
-        background-color: #dcfce7 !important;
-        color: #166534 !important;
-    }
-
-    .stWarning {
-        background-color: #fef3c7 !important;
-        color: #92400e !important;
-    }
-
-    .stError {
-        background-color: #fee2e2 !important;
-        color: #991b1b !important;
-    }
-</style>
-""", unsafe_allow_html=True)
+configure_page_style()
 
 
 # ============================================================================

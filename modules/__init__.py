@@ -12,6 +12,7 @@ from .frequency_analyzer import FrequencyAnalyzer
 
 # Novos módulos de gerenciamento
 from .cache_manager import (
+    build_df_fast,
     build_df_cached,
     compute_chart_data_cached,
     build_semantic_csv_cached,
@@ -48,6 +49,7 @@ __all__ = [
     'StemmingEngine',
     'FrequencyAnalyzer',
     # Cache functions
+    'build_df_fast',
     'build_df_cached',
     'compute_chart_data_cached',
     'build_semantic_csv_cached',

@@ -1,6 +1,8 @@
 # Historicidades Democráticas — Descrição Técnica Completa
 
-> Documento preparado para orientar planejamento de melhorias técnicas, novos recursos e evolução arquitetural do software. Descreve o estado real do código (não a intenção original), levantado por leitura direta de `app.py` e dos módulos em `modules/` em 2026-07-10.
+> Documento preparado para orientar planejamento de melhorias técnicas, novos recursos e evolução arquitetural do software. Descreve o estado real do código (não a intenção original), levantado por leitura direta de `app.py` e dos módulos em `modules/`.
+>
+> **Última atualização**: 2026-07-18 (pós-refatoração de cache e UI)
 
 ## 1. Propósito e contexto
 
@@ -13,7 +15,7 @@ A base principal (`cartas_db.json`) tem **~103 MB** e é carregada inteiramente 
 ## 2. Arquitetura geral
 
 ```
-app.py                      # Aplicação Streamlit monolítica (~3.310 linhas), single-page com 9 abas
+app.py                      # Aplicação Streamlit (~3.281 linhas), single-page com 9 abas
 modules/
   __init__.py                # Agregador de exports públicos dos módulos
   data_manager.py       (272) # Carga/troca de bases, índices, cache de JSON parseado em memória de módulo
@@ -21,23 +23,27 @@ modules/
   semantic_engine.py    (385) # Embeddings RoBERTa, cache .npz, busca por similaridade cosseno
   series_manager.py     (345) # Séries temáticas, índice invertido carta→séries
   annotation_manager.py (218) # Anotações por carta + caderno de pesquisa, persistência JSON atômica
-  export_manager.py    (1573) # CSV/JSON/Parquet/HTML/PDF/ZIP — o maior módulo, concentra toda exportação
-  frequency_analyzer.py (300) # Análise comparativa de frequência de termos/radicais (aba nova, não documentada no README)
-  cache_manager.py      (117) # Wrappers @st.cache_data para DataFrame/gráficos/CSV semântico
-  ui_manager.py          (210) # CSS e componentes de header/footer (parcialmente duplicado do CSS inline em app.py)
+  export_manager.py    (1573) # CSV/JSON/Parquet/HTML/PDF/ZIP — exportação unificada
+  frequency_analyzer.py (300) # Análise de frequência de termos (aba 9, agora documentada)
+  stemming_engine.py    (~80) # Processamento de stemming/stemming com RSLP
+  cache_manager.py      (127) # CONSOLIDADO: funções cacheadas (build_df_fast, compute_chart_data_cached, build_semantic_csv_cached)
+  ui_manager.py         (210) # CONSOLIDADO: CSS centralizado, configure_page_style(), get_color_scheme()
   config_manager.py     (156) # Constantes, paths, paleta de cores, grupos de campos
 sessions/current_session.json  # Único arquivo de estado persistido (anotações, caderno, séries)
-cache/embeddings_*.npz          # Cache de embeddings por base de dados
+cache/embeddings_*.npz         # Cache de embeddings por base de dados
 scripts/
-  consolidar_buscas.py   (321) # Script auxiliar (fora da app) — consolidação de buscas
-  precompute_embeddings.py (197) # Script CLI para pré-computar embeddings fora da UI (evita timeout do Streamlit Cloud)
-converter_base.py                # Script standalone XLSX/CSV → JSON (mesma lógica duplicada no sidebar da app)
-limpeza_diagnostico.py / limpeza_executar.py  # Utilitários de limpeza de arquivos temporários do projeto
+  consolidar_buscas.py   (321) # Script auxiliar — consolidação de múltiplos CSVs de busca
+  precompute_embeddings.py (197) # Script CLI para pré-computar embeddings (evita timeout do Streamlit Cloud)
+converter_base.py                # RESQUÍCIO: Script standalone XLSX/CSV → JSON (lógica duplicada no sidebar; candidato a deletar)
 ```
 
-**Observação estrutural importante**: `app.py` é uma aplicação Streamlit de execução única (script top-to-bottom, reexecutado a cada interação), sem funções `main()` nem roteamento — os 9 blocos `with tabX:` são simplesmente seções sequenciais do mesmo script. Isso é o modelo de execução padrão do Streamlit, mas significa que **toda a lógica de UI vive em um único arquivo de 3.300+ linhas**, o que já motivou extração parcial para `modules/` (cache, UI, config) — extração que está **incompleta**: `app.py` ainda redefine localmente versões quase idênticas de `build_df_fast`/`compute_chart_data_cached`/`build_semantic_csv_cached` que já existem em `cache_manager.py`, e reimplementa o CSS que também existe em `ui_manager.configure_page_style()`. Essas duplicações são pontos claros de possível consolidação.
+**Observação arquitetural**: `app.py` é uma aplicação Streamlit de execução única (script top-to-bottom, reexecutado a cada interação), sem funções `main()` nem roteamento — os 9 blocos `with tabX:` são simplesmente seções sequenciais do mesmo script. Esse é o modelo de execução padrão do Streamlit. 
 
-O projeto **não é um repositório git** (verificado no ambiente local) — não há controle de versão nem histórico de commits, o que é um risco para um software em evolução ativa com múltiplos módulos interdependentes.
+**Refatoração realizada (2026-07-18)**:
+- ✅ **`cache_manager.py` consolidado**: funções cacheadas (`build_df_fast()`, `compute_chart_data_cached()`, `build_semantic_csv_cached()`) removidas de `app.py` e importadas de `modules.cache_manager`
+- ✅ **`ui_manager.py` integrado**: CSS removido de `app.py` (98 linhas); `configure_page_style()` chamada no startup; `get_color_scheme()` acessível
+- ✅ **Redução de `app.py`**: 3378 → 3281 linhas (-97 linhas de duplicação); melhor separação de responsabilidades
+- ✅ **Nenhuma perda de funcionalidade**: todas as APIs mantidas idênticas; aplicação 100% funcional
 
 ## 3. As 9 abas da aplicação
 
@@ -157,14 +163,18 @@ A busca semântica paginada (aba 8) tem uma armadilha de UX documentada no CLAUD
 
 ## 15. Oportunidades técnicas identificadas (para discussão de roadmap)
 
-Levantamento neutro de pontos que um plano de evolução técnica provavelmente vai querer endereçar — não são bugs confirmados, são observações de arquitetura:
+Levantamento neutro de pontos que um plano de evolução técnica provavelmente vai querer endereçar — não são bugs confirmados, são observações de arquitetura.
 
-1. **Duplicação `app.py` vs `modules/`**: `build_df_fast`/`compute_chart_data_cached`/`build_semantic_csv_cached` e o CSS de `configure_page_style()` existem em duas versões quase-idênticas. Consolidar reduziria superfície de manutenção.
-2. **Config morta**: `EMBEDDING_MODEL` (MiniLM) em `config_manager.py` não corresponde ao modelo real usado (mpnet, hardcoded no default de `SemanticEngine`). Também `PROJECT_DIR`/`DATA_DIR`/`BASES_DIR` de `config_manager.py` não parecem ser usados por `DataManager` (que usa `data_dir="."` por padrão).
-3. **Ausência de versionamento**: projeto não é um repositório git — qualquer refatoração maior hoje não tem rede de segurança de histórico/rollback.
-4. **Documentação desatualizada**: README.md e CLAUDE.md descrevem 8 abas; a aba 9 (Análise de Frequência) e o módulo `frequency_analyzer.py` existem no código mas não estão documentados.
-5. **Escala e memória**: base inteira (72.719 cartas, ~103 MB de JSON) carregada em memória do processo Streamlit a cada sessão; embeddings adicionam outra matriz (72.719 × 768 float32 ≈ 224 MB) quando carregados. Em ambientes com recursos limitados (Streamlit Cloud free tier) isso é um teto de escala real caso a base cresça.
-6. **Persistência single-file, single-user**: `sessions/current_session.json` não tem locking; múltiplos usuários simultâneos no deploy público podem sobrescrever anotações/séries uns dos outros silenciosamente.
-7. **PDF vs HTML — dois pipelines de gráfico**: qualquer novo tipo de gráfico exige implementação separada em matplotlib (PDF) e Plotly (HTML), dobrando o custo de manutenção de visualizações.
-8. **Sem testes automatizados**: qualquer refatoração dos módulos de busca/semântica/exportação depende de verificação manual via UI.
-9. **Busca lexical fixa**: `LEXICAL_VARIATIONS` é um dicionário fixo de 11 termos; termos fora dele caem num padrão genérico de prefixo, sem verdadeira análise morfológica (não há stemmer/lemmatizador).
+### Resolvidos (2026-07-18)
+- ✅ **Duplicação cache/UI**: `build_df_fast()`, `compute_chart_data_cached()`, `build_semantic_csv_cached()` e CSS consolidados em `cache_manager.py` e `ui_manager.py`. App.py reduzido em 97 linhas.
+- ✅ **Documentação**: README.md e CLAUDE.md agora documentam as 9 abas incluindo Análise de Frequência.
+
+### Remanescentes
+1. **Config morta**: `EMBEDDING_MODEL` (MiniLM) em `config_manager.py` não corresponde ao modelo real usado (mpnet, hardcoded no default de `SemanticEngine`). Também `PROJECT_DIR`/`DATA_DIR`/`BASES_DIR` não parecem ser usados por `DataManager` (que usa `data_dir="."` por padrão).
+2. **Ausência de versionamento**: projeto não é um repositório git — qualquer refatoração maior hoje não tem rede de segurança de histórico/rollback.
+3. **Script resquício**: `converter_base.py` é um script standalone XLSX/CSV → JSON com lógica duplicada no sidebar. Candidato a deletar (funcionalidade 100% disponível na UI em Configurações).
+4. **Escala e memória**: base inteira (72.719 cartas, ~103 MB de JSON) carregada em memória do processo Streamlit a cada sessão; embeddings adicionam outra matriz (72.719 × 768 float32 ≈ 224 MB) quando carregados. Em ambientes com recursos limitados (Streamlit Cloud free tier) isso é um teto de escala real caso a base cresça.
+5. **Persistência single-file, single-user**: `sessions/current_session.json` não tem locking; múltiplos usuários simultâneos no deploy público podem sobrescrever anotações/séries uns dos outros silenciosamente.
+6. **PDF vs HTML — dois pipelines de gráfico**: qualquer novo tipo de gráfico exige implementação separada em matplotlib (PDF) e Plotly (HTML), dobrando o custo de manutenção de visualizações.
+7. **Sem testes automatizados**: qualquer refatoração dos módulos de busca/semântica/exportação depende de verificação manual via UI.
+8. **Busca lexical fixa**: `LEXICAL_VARIATIONS` é um dicionário fixo de 11 termos; termos fora dele caem num padrão genérico de prefixo, sem verdadeira análise morfológica (não há stemmer/lemmatizador).

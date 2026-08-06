@@ -985,35 +985,86 @@ with tab3:
         series_list = _todas_series
 
         if series_list:
-            _rerun_series_panel = False
-            for serie in series_list:
-                info = sm.get_info_serie(serie)
-                st.markdown(f"**{serie}** ({info['total_cartas']} cartas)")
+            # Dropdown para selecionar série
+            if 'manage_serie_select' not in st.session_state:
+                st.session_state.manage_serie_select = series_list[0]
 
-                col_edit, col_del = st.columns(2)
-                with col_edit:
-                    if st.button(f"✏️ Editar", key=f"edit_serie_{serie}"):
-                        st.session_state.edit_mode_serie[serie] = True
-                        st.session_state['view_serie_select'] = serie
-                        _rerun_series_panel = True
-                        break
+            serie_para_gerenciar = st.selectbox(
+                "Selecione uma série para gerenciar:",
+                options=series_list,
+                index=series_list.index(st.session_state.manage_serie_select) if st.session_state.manage_serie_select in series_list else 0,
+                key="manage_serie_select"
+            )
 
-                with col_del:
-                    with st.form(f"delete_serie_form_{serie}"):
-                        st.write(f"**Deletar '{serie}'?** Isso removerá todos os vínculos desta série.")
-                        if st.form_submit_button("🗑️ Confirmar exclusão", type="secondary", use_container_width=True):
-                            success, msg = sm.deletar_serie(serie)
-                            if success:
+            info = sm.get_info_serie(serie_para_gerenciar)
+            st.markdown(f"**{serie_para_gerenciar}** — {info['total_cartas']} cartas")
+            st.caption(f"_{info['descricao']}_" if info.get('descricao') else "Sem descrição")
+
+            # Botões de ação
+            col_edit, col_del = st.columns(2)
+
+            with col_edit:
+                if st.button(f"✏️ Editar", key=f"edit_serie_btn_{serie_para_gerenciar}", use_container_width=True):
+                    st.session_state.edit_mode_serie[serie_para_gerenciar] = True
+                    st.rerun()
+
+            with col_del:
+                with st.form(f"delete_serie_form_{serie_para_gerenciar}"):
+                    st.write(f"**Deletar '{serie_para_gerenciar}'?**")
+                    st.caption("Isso removerá todos os vínculos desta série.")
+                    if st.form_submit_button("🗑️ Confirmar exclusão", type="secondary", use_container_width=True):
+                        success, msg = sm.deletar_serie(serie_para_gerenciar)
+                        if success:
+                            st.session_state.series_list_cache_valid = False
+                            st.session_state.manage_serie_select = series_list[0] if len(series_list) > 1 else None
+                            st.success(msg)
+                            st.rerun()
+                        else:
+                            st.error(msg)
+
+            # Modo edição da série
+            if st.session_state.edit_mode_serie.get(serie_para_gerenciar, False):
+                st.markdown("---")
+                st.subheader("✏️ Editar Série")
+
+                novo_nome_serie = st.text_input(
+                    "Nome da série:",
+                    value=serie_para_gerenciar,
+                    key=f"edit_manage_serie_nome_{serie_para_gerenciar}"
+                )
+                nova_descricao = st.text_area(
+                    "Descrição:",
+                    value=info.get('descricao', ''),
+                    height=80,
+                    key=f"edit_manage_serie_desc_{serie_para_gerenciar}"
+                )
+
+                with st.form(f"edit_manage_serie_form_{serie_para_gerenciar}"):
+                    col_save, col_cancel = st.columns(2)
+                    with col_save:
+                        if st.form_submit_button("💾 Salvar", use_container_width=True):
+                            nome_final = novo_nome_serie.strip() or serie_para_gerenciar
+                            has_error = False
+                            renamed = False
+                            if nome_final != serie_para_gerenciar:
+                                _ok_r, _msg_r = sm.renomear_serie(serie_para_gerenciar, nome_final)
+                                if not _ok_r:
+                                    st.error(_msg_r)
+                                    has_error = True
+                                else:
+                                    renamed = True
+                            if not has_error:
+                                sm.editar_descricao_serie(nome_final, nova_descricao)
+                                st.session_state.edit_mode_serie[serie_para_gerenciar] = False
+                                if renamed:
+                                    st.session_state.manage_serie_select = nome_final
                                 st.session_state.series_list_cache_valid = False
-                                st.success(msg)
-                                _rerun_series_panel = True
-                                break
-
-                st.divider()
-
-            if _rerun_series_panel:
-                st.rerun()
-
+                                st.success("✅ Série atualizada!")
+                                st.rerun()
+                    with col_cancel:
+                        if st.form_submit_button("❌ Cancelar", type="secondary", use_container_width=True):
+                            st.session_state.edit_mode_serie[serie_para_gerenciar] = False
+                            st.rerun()
         else:
             st.info("ℹ️ Nenhuma série criada ainda")
 

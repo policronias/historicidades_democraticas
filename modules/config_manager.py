@@ -77,26 +77,24 @@ MAX_PAGE_SIZE = 50
 # CONFIGURAÇÕES DE UI
 # ============================================================================
 
-# Temas e estilos — tema escuro/dourado
+# Temas e estilos — Sistema QVR profissional
 COLORS = {
-    'primary': '#2b2d33',
-    'primary_hover': '#45474e',
-    'accent': '#d97706',
-    'accent_hover': '#b45309',
-    'success': '#10b981',
-    'warning': '#f59e0b',
-    'danger': '#ef4444',
-    'info': '#0ea5e9',
-    'text_primary': '#f5f5f5',
-    'text_secondary': '#b0b8cc',
-    'bg_primary': '#0a0e1f',
-    'bg_secondary': '#1a1f2e',
-    'bg_tertiary': '#252b3a',
-    'gold': '#d97706',
-    'gold_bright': '#fbbf24',
-    'green': '#10b981',
-    'coral': '#ff6b6b',
-    'border': '#404657',
+    'ink': '#0a0e13',
+    'panel': '#141b23',
+    'panel_2': '#1a242e',
+    'line': '#3a4d5c',
+    'text': '#f3efe3',
+    'muted': '#a9b6c2',
+    'brass': '#c99a5e',
+    'brass_bright': '#eec98a',
+    'pass': '#6fc191',
+    'pass_bg': 'rgba(111, 193, 145, 0.16)',
+    'block': '#e2727a',
+    'block_bg': 'rgba(226, 114, 122, 0.16)',
+    'warn': '#e8b563',
+    'shadow_sm': '0 1px 2px rgba(0, 0, 0, 0.35)',
+    'shadow_md': '0 6px 20px rgba(0, 0, 0, 0.4)',
+    'shadow_lg': '0 16px 40px rgba(0, 0, 0, 0.45)',
 }
 
 # Mensagens padrão

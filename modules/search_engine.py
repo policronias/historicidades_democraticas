@@ -525,7 +525,7 @@ class SearchEngine:
         for start, end in sorted(posicoes):
             match_text = texto[start:end]
             resultado_parts.append(texto[idx_atual:start])
-            resultado_parts.append(f'<mark style="background-color: {cor}; padding: 2px 4px;">{match_text}</mark>')
+            resultado_parts.append(f'<mark style="background-color: {cor}; color: #0a0e1f; padding: 2px 4px;">{match_text}</mark>')
             idx_atual = end
 
         resultado_parts.append(texto[idx_atual:])
@@ -577,7 +577,7 @@ class SearchEngine:
             # Adiciona texto antes do match
             resultado_parts.append(texto[idx_atual:start])
             # Adiciona texto destacado
-            resultado_parts.append(f'<mark style="background-color: {cor}; padding: 2px 4px;">{original_text}</mark>')
+            resultado_parts.append(f'<mark style="background-color: {cor}; color: #0a0e1f; padding: 2px 4px;">{original_text}</mark>')
             idx_atual = end
 
         # Adiciona texto restante

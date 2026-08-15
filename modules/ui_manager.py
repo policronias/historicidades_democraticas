@@ -15,16 +15,56 @@ def configure_page_style():
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap');
 
-    /* Paleta de cores: grafite/âmbar contemporâneo */
+    /* Paleta de cores: responsiva a prefers-color-scheme */
     :root {
+        /* Cores primárias (constantes) */
         --primary-color: #2b2d33;
         --primary-hover: #45474e;
         --accent-color: #d97706;
         --accent-hover: #b45309;
-        --text-primary: #1f2937;
-        --text-secondary: #6b7280;
-        --bg-light: #f4f4f2;
-        --border-color: #ddd9d2;
+
+        /* Tema padrão (dark) */
+        --bg-primary: #0a0e1f;
+        --bg-secondary: #1a1f2e;
+        --bg-tertiary: #252b3a;
+        --text-primary: #f5f5f5;
+        --text-secondary: #b0b8cc;
+        --border-color: #404657;
+
+        /* Acentos */
+        --gold: #d97706;
+        --gold-bright: #fbbf24;
+        --green: #10b981;
+        --coral: #ff6b6b;
+
+        /* Compatibilidade */
+        --bg-light: #252b3a;
+    }
+
+    /* Tema claro (detectado automaticamente) */
+    @media (prefers-color-scheme: light) {
+        :root {
+            --bg-primary: #f9fafb;
+            --bg-secondary: #eeebe5;
+            --bg-tertiary: #e5e7eb;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --border-color: #ddd9d2;
+            --bg-light: #eeebe5;
+        }
+    }
+
+    /* Tema escuro (detectado automaticamente) */
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --bg-primary: #0a0e1f;
+            --bg-secondary: #1a1f2e;
+            --bg-tertiary: #252b3a;
+            --text-primary: #f5f5f5;
+            --text-secondary: #b0b8cc;
+            --border-color: #404657;
+            --bg-light: #252b3a;
+        }
     }
 
     /* Fonte e espaçamento base */
@@ -54,13 +94,13 @@ def configure_page_style():
 
     /* Expanders */
     .streamlit-expanderHeader {
-        background-color: var(--bg-light);
+        background-color: var(--bg-secondary);
         border-radius: 8px;
         border: 1px solid var(--border-color);
     }
 
     .streamlit-expanderHeader:hover {
-        background-color: #eeece7;
+        background-color: var(--bg-tertiary);
     }
 
     /* Buttons */
@@ -102,7 +142,7 @@ def configure_page_style():
 
     /* Metric boxes */
     .stMetric {
-        background-color: var(--bg-light);
+        background-color: var(--bg-secondary);
         border-radius: 8px;
         padding: 16px;
         border: 1px solid var(--border-color);
@@ -110,33 +150,37 @@ def configure_page_style():
 
     /* Sidebar */
     .sidebar .sidebar-content {
-        background-color: #eeece7;
+        background-color: var(--bg-primary);
     }
 
     /* Success/Error messages */
     .stSuccess {
-        background-color: #d1fae5;
-        color: #065f46;
+        background-color: rgba(16, 185, 129, 0.15);
+        color: #6ee7b7;
         border-radius: 6px;
+        border-left: 4px solid var(--green);
     }
 
     .stError {
-        background-color: #fee2e2;
-        color: #991b1b;
+        background-color: rgba(239, 68, 68, 0.15);
+        color: #fca5a5;
         border-radius: 6px;
+        border-left: 4px solid #ef4444;
     }
 
     .stWarning {
-        background-color: #fef3c7;
-        color: #92400e;
+        background-color: rgba(217, 119, 6, 0.15);
+        color: #fdba74;
         border-radius: 6px;
+        border-left: 4px solid var(--gold);
     }
 
     /* Info message */
     .stInfo {
-        background-color: #dbeafe;
-        color: #0c2340;
+        background-color: rgba(14, 165, 233, 0.15);
+        color: #7dd3fc;
         border-radius: 6px;
+        border-left: 4px solid #0ea5e9;
     }
 
     /* Headers */
@@ -161,7 +205,7 @@ def configure_page_style():
 
     /* Code blocks */
     .stCodeBlock {
-        background-color: var(--bg-light);
+        background-color: var(--bg-secondary);
         border: 1px solid var(--border-color);
         border-radius: 6px;
     }
@@ -226,7 +270,7 @@ def get_plotly_color_palette() -> list:
 
 def get_color_scheme() -> dict:
     """
-    Retorna o esquema de cores usado na aplicação.
+    Retorna o esquema de cores do tema escuro/dourado.
 
     Returns:
         Dicionário com variáveis de cor
@@ -240,8 +284,14 @@ def get_color_scheme() -> dict:
         'warning': '#f59e0b',
         'danger': '#ef4444',
         'info': '#0ea5e9',
-        'text_primary': '#1f2937',
-        'text_secondary': '#6b7280',
-        'bg_light': '#f4f4f2',
-        'border': '#ddd9d2',
+        'text_primary': '#f5f5f5',
+        'text_secondary': '#b0b8cc',
+        'bg_primary': '#0a0e1f',
+        'bg_secondary': '#1a1f2e',
+        'bg_tertiary': '#252b3a',
+        'gold': '#d97706',
+        'gold_bright': '#fbbf24',
+        'green': '#10b981',
+        'coral': '#ff6b6b',
+        'border': '#404657',
     }

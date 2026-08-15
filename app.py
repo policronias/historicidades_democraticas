@@ -823,7 +823,7 @@ with tab1:
 
             # Aplica destaques se houver termos buscados e destaque ativo
             if st.session_state.highlighted_terms and st.session_state.highlight_active:
-                cores_destaque = ["#ffff99", "#ffcc99", "#99ccff", "#99ff99", "#ff99ff"]
+                cores_destaque = ["#fbbf24", "#f97316", "#06b6d4", "#34d399", "#c084fc"]
                 texto_destacado = se.highlight_multiple_terms(
                     texto,
                     st.session_state.highlighted_terms,
@@ -834,7 +834,7 @@ with tab1:
                 st.markdown(texto_destacado, unsafe_allow_html=True)
             else:
                 st.markdown(f"""
-                <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 4px; padding: 15px; min-height: 300px; overflow-y: auto; font-family: monospace; white-space: pre-wrap; word-wrap: break-word; color: #374151;">
+                <div style="background-color: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 4px; padding: 15px; min-height: 300px; overflow-y: auto; font-family: monospace; white-space: pre-wrap; word-wrap: break-word; color: var(--text-primary);">
                 {texto}
                 </div>
                 """, unsafe_allow_html=True)
@@ -1153,9 +1153,9 @@ with tab3:
                                 st.markdown("**Texto da carta:**")
                                 _texto_s = carta.get('texto', '') or ''
                                 st.markdown(
-                                    f'<div style="background-color: #f9fafb; border: 1px solid #e5e7eb; '
+                                    f'<div style="background-color: var(--bg-tertiary); border: 1px solid var(--border-color); '
                                     f'border-radius: 4px; padding: 12px; font-family: monospace; '
-                                    f'white-space: pre-wrap; word-wrap: break-word; color: #374151; '
+                                    f'white-space: pre-wrap; word-wrap: break-word; color: var(--text-primary); '
                                     f'max-height: 300px; overflow-y: auto;">{_texto_s}</div>',
                                     unsafe_allow_html=True
                                 )
@@ -2424,7 +2424,7 @@ with tab7:
                 st.subheader("📖 Texto")
                 texto = carta.get('texto', '')
                 st.markdown(f"""
-                <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 4px; padding: 15px; min-height: 200px; overflow-y: auto; font-family: monospace; white-space: pre-wrap; word-wrap: break-word; color: #374151;">
+                <div style="background-color: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 4px; padding: 15px; min-height: 200px; overflow-y: auto; font-family: monospace; white-space: pre-wrap; word-wrap: break-word; color: var(--text-primary);">
                 {texto}
                 </div>
                 """, unsafe_allow_html=True)
@@ -2954,9 +2954,9 @@ with tab8:
                     # Texto completo
                     st.markdown("**Texto da carta:**")
                     st.markdown(
-                        f'<div style="background-color: #f9fafb; border: 1px solid #e5e7eb; '
+                        f'<div style="background-color: var(--bg-tertiary); border: 1px solid var(--border-color); '
                         f'border-radius: 4px; padding: 12px; font-family: monospace; '
-                        f'white-space: pre-wrap; word-wrap: break-word; color: #374151; '
+                        f'white-space: pre-wrap; word-wrap: break-word; color: var(--text-primary); '
                         f'max-height: 300px; overflow-y: auto;">{_texto_sem}</div>',
                         unsafe_allow_html=True
                     )
@@ -3310,7 +3310,7 @@ with tab9:
                                         texto = texto[:start] + highlighted + texto[end:]
 
                                     st.markdown(
-                                        f'<div style="background-color: #f5f5f5; padding: 12px; border-radius: 4px; border-left: 4px solid {cor}; max-height: 250px; overflow-y: auto; font-size: 13px;">{texto}</div>',
+                                        f'<div style="background-color: var(--bg-secondary); padding: 12px; border-radius: 4px; border-left: 4px solid {cor}; max-height: 250px; overflow-y: auto; font-size: 13px; color: var(--text-primary);">{texto}</div>',
                                         unsafe_allow_html=True
                                     )
                                 else:

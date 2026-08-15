@@ -77,7 +77,7 @@ MAX_PAGE_SIZE = 50
 # CONFIGURAÇÕES DE UI
 # ============================================================================
 
-# Temas e estilos
+# Temas e estilos — tema escuro/dourado
 COLORS = {
     'primary': '#2b2d33',
     'primary_hover': '#45474e',
@@ -87,10 +87,16 @@ COLORS = {
     'warning': '#f59e0b',
     'danger': '#ef4444',
     'info': '#0ea5e9',
-    'text_primary': '#1f2937',
-    'text_secondary': '#6b7280',
-    'bg_light': '#f4f4f2',
-    'border': '#ddd9d2',
+    'text_primary': '#f5f5f5',
+    'text_secondary': '#b0b8cc',
+    'bg_primary': '#0a0e1f',
+    'bg_secondary': '#1a1f2e',
+    'bg_tertiary': '#252b3a',
+    'gold': '#d97706',
+    'gold_bright': '#fbbf24',
+    'green': '#10b981',
+    'coral': '#ff6b6b',
+    'border': '#404657',
 }
 
 # Mensagens padrão

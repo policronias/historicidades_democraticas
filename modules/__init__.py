@@ -29,6 +29,9 @@ from .ui_manager import (
     show_academic_header,
     show_footer,
     get_color_scheme,
+    sidebar_section,
+    breadcrumb_nav,
+    reset_context,
 )
 from .config_manager import (
     ensure_paths_exist,
@@ -73,6 +76,9 @@ __all__ = [
     'show_academic_header',
     'show_footer',
     'get_color_scheme',
+    'sidebar_section',
+    'breadcrumb_nav',
+    'reset_context',
     # Config
     'ensure_paths_exist',
     'get_path',

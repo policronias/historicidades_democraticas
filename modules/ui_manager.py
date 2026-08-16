@@ -301,3 +301,38 @@ def get_color_scheme() -> dict:
         'coral': '#ff6b6b',
         'border': '#404657',
     }
+
+
+def sidebar_section(title: str, icon: str = ""):
+    """
+    Cria uma seção formatada na sidebar
+
+    Uso:
+        sidebar_section("🔍 BUSCAR & EXPLORAR")
+    """
+    if icon and not title.startswith(icon):
+        title = f"{icon} {title}"
+    st.markdown(f"### {title}")
+    st.markdown('<div style="height: 2px; background: var(--border-color); margin: 8px 0;"></div>', unsafe_allow_html=True)
+
+
+def breadcrumb_nav(*items):
+    """
+    Mostra breadcrumb de navegação
+
+    Uso:
+        breadcrumb_nav("Explorador", "Carta #42", "Anotações")
+        # Mostra: 📍 Explorador > Carta #42 > Anotações
+    """
+    breadcrumb_text = " > ".join(items)
+    st.caption(f"📍 {breadcrumb_text}")
+
+
+def reset_context():
+    """Reseta contexto de navegação mantendo session data"""
+    if 'current_carta_id' in st.session_state:
+        st.session_state.current_carta_id = None
+    if 'search_results' in st.session_state:
+        st.session_state.search_results = []
+    if 'semantic_results' in st.session_state:
+        st.session_state.semantic_results = []

@@ -203,12 +203,25 @@ _todas_cartas = dm.get_todas_cartas()
 # ============================================================================
 
 with st.sidebar:
-    st.markdown("# 📚 **Historicidades Democráticas**")
-    st.markdown("<sub style='color: var(--text-secondary); font-size: 18px;'>Por Walderez Ramalho</sub>", unsafe_allow_html=True)
+    # Header com Home button
+    col_header, col_home = st.columns([3, 1])
+    with col_header:
+        st.markdown("# 📚 **Historicidades Democráticas**")
+        st.markdown("<sub style='color: var(--text-secondary); font-size: 18px;'>Por Walderez Ramalho</sub>", unsafe_allow_html=True)
+    with col_home:
+        if st.button("🏠", key="home_button", help="Voltar ao início"):
+            reset_context()
+            st.session_state.semantic_page = 1
+            st.session_state.current_carta_id = None
+            st.rerun()
+
     st.markdown("---")
 
-    # Seletor de base de dados
-    st.subheader("📂 Selecionar Base de Dados")
+    # ════════════════════════════════════════════════════════════
+    # SEÇÃO: BASE DE DADOS
+    # ════════════════════════════════════════════════════════════
+
+    st.subheader("📂 Base de Dados")
     available_dbs = get_available_databases()
     current_db = st.session_state.get('selected_database', 'cartas_db.json')
 
@@ -747,6 +760,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
 
 with tab1:
     st.header("🔍 Explorador de Cartas")
+    breadcrumb_nav("Home", "Explorador de Cartas")
 
     # Seção de navegação
     st.subheader("📍 Navegação")
@@ -960,6 +974,7 @@ with tab1:
 
 with tab2:
     st.header("📓 Caderno de Pesquisa")
+    breadcrumb_nav("Home", "Caderno de Pesquisa")
 
     caderno_atual = am.get_caderno_pesquisa()
 
@@ -992,6 +1007,7 @@ with tab2:
 
 with tab3:
     st.header("🗂️ Séries Temáticas")
+    breadcrumb_nav("Home", "Séries Temáticas")
 
     col1, col2 = st.columns([1, 2])
 
@@ -1409,6 +1425,7 @@ with tab3:
 
 with tab4:
     st.header("📥 Exportar Dados")
+    breadcrumb_nav("Home", "Exportar Dados")
 
     st.info("ℹ️ Exporte seus dados em diversos formatos para análise externa ou backup.")
 
@@ -1781,6 +1798,7 @@ with tab4:
 
 with tab5:
     st.header("⚙️ Configurações")
+    breadcrumb_nav("Home", "Configurações")
 
     # ========== BASES DE DADOS ==========
     st.subheader("🗄️ Gerenciamento de Bases de Dados")
@@ -2028,6 +2046,7 @@ with tab6:
         st.rerun()
 
     st.header("📊 Gráficos e Tabelas")
+    breadcrumb_nav("Home", "Gráficos e Tabelas")
 
     # ========== SELETOR DE ESCOPO ==========
     st.subheader("Escopo dos Dados")
@@ -2251,6 +2270,7 @@ with tab7:
         st.rerun()
 
     st.header("🎯 Filtros Avançados")
+    breadcrumb_nav("Home", "Filtros Avançados")
 
     st.markdown("Utilize os filtros abaixo para buscar cartas por suas características. Você pode combinar múltiplos filtros simultaneamente.")
 
@@ -2672,6 +2692,8 @@ with tab8:
         st.rerun()
 
     st.header("🧠 Busca Semântica por Embeddings")
+    breadcrumb_nav("Home", "Busca Semântica")
+
     st.markdown(
         "Encontre cartas semanticamente relacionadas à sua consulta em linguagem natural, "
         "mesmo sem compartilhar palavras exatas com os textos. "
@@ -3171,6 +3193,7 @@ with tab9:
         st.rerun()
 
     st.header("📈 Análise de Frequência de Termos")
+    breadcrumb_nav("Home", "Análise de Frequência")
 
     # Inicializar frequency analyzer se não existir
     if 'frequency_analyzer' not in st.session_state:

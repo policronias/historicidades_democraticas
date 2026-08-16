@@ -7,6 +7,68 @@ import streamlit as st
 import csv
 from io import StringIO
 import pandas as pd
+from typing import Optional
+
+
+# ════════════════════════════════════════════════════════════
+# LAZY LOADING — Abas 6-9 (Gráficos, Filtros, Semântica, Frequência)
+# ════════════════════════════════════════════════════════════
+
+def initialize_tab_state():
+    """Inicializa estado de carregamento das abas"""
+    tabs = ['tab6_loaded', 'tab7_loaded', 'tab8_loaded', 'tab9_loaded']
+    for tab in tabs:
+        if tab not in st.session_state:
+            st.session_state[tab] = False
+
+
+def mark_tab_loaded(tab_number: int):
+    """Marca uma aba como carregada"""
+    st.session_state[f'tab{tab_number}_loaded'] = True
+
+
+def is_tab_loaded(tab_number: int) -> bool:
+    """Verifica se uma aba foi carregada"""
+    return st.session_state.get(f'tab{tab_number}_loaded', False)
+
+
+def show_lazy_loading_placeholder(tab_number: int):
+    """Mostra placeholder durante carregamento lazy de aba"""
+    st.write(f"⏳ Carregando aba {tab_number}...")
+    st.info("Clique novamente para carregar ou aguarde...")
+
+
+# ════════════════════════════════════════════════════════════
+# SEARCH CACHE — Histórico e resultados frequentes
+# ════════════════════════════════════════════════════════════
+
+def initialize_search_cache():
+    """Inicializa cache de busca e histórico"""
+    if 'search_cache' not in st.session_state:
+        st.session_state.search_cache = {}
+    if 'search_history' not in st.session_state:
+        st.session_state.search_history = []
+
+
+def get_cached_search(query_key: str) -> Optional[dict]:
+    """Recupera resultado de busca do cache"""
+    return st.session_state.search_cache.get(query_key)
+
+
+def cache_search_result(query_key: str, results: dict):
+    """Armazena resultado de busca em cache"""
+    st.session_state.search_cache[query_key] = results
+
+    # Adicionar ao histórico
+    if query_key not in [h.get('query') for h in st.session_state.search_history]:
+        st.session_state.search_history.append({
+            'query': query_key,
+            'count': len(results.get('ids', [])),
+            'timestamp': st.session_state.get('current_time')
+        })
+        # Manter apenas últimas 20 buscas
+        if len(st.session_state.search_history) > 20:
+            st.session_state.search_history = st.session_state.search_history[-20:]
 
 
 def build_df_fast(card_ids: tuple, _todas_cartas: dict) -> pd.DataFrame:

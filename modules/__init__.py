@@ -16,7 +16,14 @@ from .cache_manager import (
     build_df_cached,
     compute_chart_data_cached,
     build_semantic_csv_cached,
+    initialize_tab_state,
+    mark_tab_loaded,
+    is_tab_loaded,
+    initialize_search_cache,
+    get_cached_search,
+    cache_search_result,
 )
+from .feedback_manager import FeedbackManager
 from .ui_manager import (
     configure_page_style,
     show_academic_header,
@@ -53,6 +60,14 @@ __all__ = [
     'build_df_cached',
     'compute_chart_data_cached',
     'build_semantic_csv_cached',
+    'initialize_tab_state',
+    'mark_tab_loaded',
+    'is_tab_loaded',
+    'initialize_search_cache',
+    'get_cached_search',
+    'cache_search_result',
+    # Feedback
+    'FeedbackManager',
     # UI functions
     'configure_page_style',
     'show_academic_header',

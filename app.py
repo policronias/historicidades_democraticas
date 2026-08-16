@@ -551,8 +551,14 @@ if form_submit and termo_busca:
     st.session_state.search_scope = escopo_busca
     st.session_state.search_tipo = tipo_busca
     _search_key = (termo_busca, tipo_busca, escopo_busca, case_sensitive)
+    _query_key = f"advanced_{termo_busca}_{tipo_busca}_{escopo_busca}_{case_sensitive}"
 
-    if _search_key != st.session_state.get('_last_search_key'):
+    # Tentar recuperar do cache
+    _cached = get_cached_search(_query_key)
+    if _cached:
+        FeedbackManager.success(f"✅ Cache: {len(_cached['ids'])} cartas encontradas")
+        ids_resultado, ocorrencias = _cached['ids'], _cached['ocorrencias']
+    elif _search_key != st.session_state.get('_last_search_key'):
         if escopo_busca == "Somente Texto":
             search_fields = {'texto'}
         else:
@@ -581,6 +587,8 @@ if form_submit and termo_busca:
                     search_fields=search_fields,
                     stem_index=_stem_index
                 )
+                # Guardar em cache
+                cache_search_result(_query_key, {'ids': ids_resultado, 'ocorrencias': ocorrencias})
             except RuntimeError as _e:
                 st.error(f"❌ {_e}")
                 ids_resultado, ocorrencias = [], {}
@@ -689,6 +697,24 @@ if form_submit_id:
             st.error(f"❌ Carta #{id_input} não encontrada na base de dados.")
     else:
         st.warning("⚠️ Digite um ID para buscar.")
+
+# ============================================================================
+# HISTÓRICO DE BUSCAS
+# ============================================================================
+
+with st.expander("📜 Histórico de Buscas Recentes"):
+    if st.session_state.search_history and len(st.session_state.search_history) > 0:
+        st.caption(f"Últimas {min(10, len(st.session_state.search_history))} buscas:")
+        for h in reversed(st.session_state.search_history[-10:]):
+            col_btn, col_info = st.columns([3, 1])
+            with col_btn:
+                if st.button(f"🔍 {h['query'][:50]}", key=f"history_{h['query']}"):
+                    st.session_state.search_termo = h['query'].split('_')[0]  # Extrair termo da chave
+                    st.rerun()
+            with col_info:
+                st.caption(f"{h.get('count', 0)} resultados")
+    else:
+        st.caption("Nenhuma busca anterior ainda")
 
 st.markdown("---")
 
@@ -2801,25 +2827,35 @@ with tab8:
                 "Use o botão '⚡ Pré-computar Embeddings' acima para criar o índice primeiro."
             )
         else:
-            with FeedbackManager.operation_status("🔍 Buscando similaridades..."):
-                try:
-                    # Busca sem threshold e sem limite: scores retornados para toda a base.
-                    # O threshold é aplicado dinamicamente na UI; a paginação é reiniciada.
-                    _resultados_sem = sem_e.search(
-                        query=_query_sem.strip(),
-                        cartas=_cartas_sem,
-                        db_name=_db_name_sem,
-                        top_k=99999,
-                        threshold=0.0
-                    )
-                    st.session_state.semantic_results = _resultados_sem
-                    st.session_state.semantic_page = 1
-                except FileNotFoundError as _e:
-                    st.error(f"❌ {str(_e)}")
-                    st.session_state.semantic_results = []
-                except Exception as _e:
-                    st.error(f"❌ Erro durante a busca: {str(_e)}")
-                    st.session_state.semantic_results = []
+            _query_key_sem = f"semantic_{_query_sem.strip()}_{_db_name_sem}"
+            _cached_sem = get_cached_search(_query_key_sem)
+
+            if _cached_sem:
+                FeedbackManager.success(f"✅ Cache: {len(_cached_sem)} resultados encontrados")
+                st.session_state.semantic_results = _cached_sem
+                st.session_state.semantic_page = 1
+            else:
+                with FeedbackManager.operation_status("🔍 Buscando similaridades..."):
+                    try:
+                        # Busca sem threshold e sem limite: scores retornados para toda a base.
+                        # O threshold é aplicado dinamicamente na UI; a paginação é reiniciada.
+                        _resultados_sem = sem_e.search(
+                            query=_query_sem.strip(),
+                            cartas=_cartas_sem,
+                            db_name=_db_name_sem,
+                            top_k=99999,
+                            threshold=0.0
+                        )
+                        st.session_state.semantic_results = _resultados_sem
+                        st.session_state.semantic_page = 1
+                        # Guardar em cache
+                        cache_search_result(_query_key_sem, _resultados_sem)
+                    except FileNotFoundError as _e:
+                        st.error(f"❌ {str(_e)}")
+                        st.session_state.semantic_results = []
+                    except Exception as _e:
+                        st.error(f"❌ Erro durante a busca: {str(_e)}")
+                        st.session_state.semantic_results = []
 
     # ────────────────────────────────────────────────────────────────────
     # Seção C — Resultados

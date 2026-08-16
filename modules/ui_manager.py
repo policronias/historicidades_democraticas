@@ -103,23 +103,25 @@ def configure_page_style():
         background-color: var(--bg-tertiary);
     }
 
-    /* Buttons — Estilo QVR Brass */
+    /* Buttons — Estilo QVR Brass com melhor contraste */
     .stButton > button {
-        background: rgba(201, 154, 94, 0.2);
-        color: var(--brass-bright);
-        border: 1px solid var(--brass);
+        background: rgba(201, 154, 94, 0.25);
+        color: var(--ink);
+        border: 1.5px solid var(--brass);
         border-radius: 6px;
         padding: 10px 20px;
-        font-weight: 600;
+        font-weight: 700;
         font-family: 'Manrope', sans-serif;
         font-size: 13px;
         transition: all 0.15s ease;
         cursor: pointer;
+        text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
     }
 
     .stButton > button:hover {
-        background: rgba(201, 154, 94, 0.3);
-        box-shadow: 0 0 0 2px rgba(201, 154, 94, 0.2);
+        background: rgba(201, 154, 94, 0.4);
+        color: var(--ink);
+        box-shadow: 0 0 0 2px rgba(201, 154, 94, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
     }
 
     /* Input fields */

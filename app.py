@@ -708,12 +708,14 @@ with st.form("go_to_id_form"):
 if form_submit_id:
     if id_input.strip():
         todas_ids = dm.get_ids_cartas()
-        if id_input in todas_ids:
-            st.session_state.current_carta_id = id_input
-            st.success(f"✅ Navegando para carta #{id_input}!")
+        # Converter para string para garantir compatibilidade com tipos
+        id_input_str = str(id_input.strip())
+        if id_input_str in [str(id) for id in todas_ids]:
+            st.session_state.current_carta_id = id_input_str
+            st.success(f"✅ Navegando para carta #{id_input_str}!")
             st.rerun()
         else:
-            st.error(f"❌ Carta #{id_input} não encontrada na base de dados.")
+            st.error(f"❌ Carta #{id_input_str} não encontrada na base de dados.")
     else:
         st.warning("⚠️ Digite um ID para buscar.")
 

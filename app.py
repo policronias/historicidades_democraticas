@@ -29,6 +29,13 @@ from modules import (
     build_df_fast,
     compute_chart_data_cached,
     build_semantic_csv_cached,
+    FeedbackManager,
+    initialize_tab_state,
+    mark_tab_loaded,
+    is_tab_loaded,
+    initialize_search_cache,
+    get_cached_search,
+    cache_search_result,
 )
 from modules.config_manager import EMBEDDING_MODEL
 from modules.ui_manager import configure_page_style, get_color_scheme, get_plotly_color_palette
@@ -169,6 +176,10 @@ def initialize_session():
     if 'series_list_cache' not in st.session_state:
         st.session_state.series_list_cache = st.session_state.series_manager.get_todas_series()
         st.session_state.series_list_cache_valid = True
+
+    # Fase 1: Lazy Loading e Search Cache
+    initialize_tab_state()
+    initialize_search_cache()
 
 
 initialize_session()
@@ -1228,7 +1239,7 @@ with tab3:
                         )
                     with _col_pdf_s3:
                         if st.button("📄 Gerar PDF da série", key="serie_gen_pdf", use_container_width=True):
-                            with st.spinner("Gerando PDF..."):
+                            with FeedbackManager.operation_status("📄 Gerando PDF da série..."):
                                 _pdf_s3 = ExportManager.exportar_pdf(
                                     _todas_cartas,
                                     cartas_serie,
@@ -1350,7 +1361,7 @@ with tab3:
                     key="unif_gen_pdf",
                     use_container_width=True
                 ):
-                    with st.spinner("Gerando PDF unificado..."):
+                    with FeedbackManager.operation_status("📄 Gerando PDF unificado..."):
                         _pdf_unif = ExportManager.exportar_todas_series_pdf(
                             sm.series,
                             _todas_cartas,
@@ -1455,7 +1466,7 @@ with tab4:
 
         with col_exp_pdf:
             if st.button("📄 Gerar PDF", key="busca_gen_pdf", use_container_width=True):
-                with st.spinner("Gerando PDF..."):
+                with FeedbackManager.operation_status("📄 Gerando PDF dos resultados..."):
                     _pdf_busca = ExportManager.exportar_pdf(
                         _todas_cartas,
                         st.session_state.search_results,
@@ -1546,7 +1557,7 @@ with tab4:
             with col_pdf:
                 if st.button("📄 PDF", key="export_serie_pdf", use_container_width=True):
                     cartas_serie = sm.get_cartas_serie(serie_export)
-                    with st.spinner("Gerando PDF..."):
+                    with FeedbackManager.operation_status("📄 Gerando PDF da série..."):
                         _pdf_serie_exp = ExportManager.exportar_pdf(
                             _todas_cartas,
                             cartas_serie,
@@ -1668,7 +1679,7 @@ with tab4:
             for _sn in _series_list_tudo:
                 _todos_ids.extend(sm.get_cartas_serie(_sn))
             _todos_ids = list(dict.fromkeys(_todos_ids))
-            with st.spinner("Gerando PDF de todas as séries..."):
+            with FeedbackManager.operation_status("📄 Gerando PDF de todas as séries..."):
                 _pdf_todas = ExportManager.exportar_pdf(
                     _todas_cartas,
                     _todos_ids,
@@ -1722,7 +1733,7 @@ with tab4:
     )
 
     if st.button("📊 Gerar Relatório Analítico Completo", use_container_width=True):
-        with st.spinner("Gerando relatório com gráficos..."):
+        with FeedbackManager.operation_status("📊 Gerando relatório com gráficos..."):
             html_report = ExportManager.gerar_relatorio_html(
                 sm.series,
                 _todas_cartas,
@@ -1984,6 +1995,12 @@ with tab5:
 # ============================================================================
 
 with tab6:
+    # Lazy load: Tab carrega apenas quando clicado
+    if not is_tab_loaded(6):
+        st.info("⏳ Carregando gráficos e tabelas na primeira visualização...")
+        mark_tab_loaded(6)
+        st.rerun()
+
     st.header("📊 Gráficos e Tabelas")
 
     # ========== SELETOR DE ESCOPO ==========
@@ -2201,6 +2218,12 @@ def _get_unique_values_from_dict(cartas_dict, campo):
 
 
 with tab7:
+    # Lazy load: Tab carrega apenas quando clicado
+    if not is_tab_loaded(7):
+        st.info("⏳ Carregando filtros na primeira visualização...")
+        mark_tab_loaded(7)
+        st.rerun()
+
     st.header("🎯 Filtros Avançados")
 
     st.markdown("Utilize os filtros abaixo para buscar cartas por suas características. Você pode combinar múltiplos filtros simultaneamente.")
@@ -2571,7 +2594,7 @@ with tab7:
         with col_html:
             # Gerar relatório HTML apenas quando clicado (evita rerun infinito)
             if st.button("📄 Gerar Relatório HTML", key="filter_gen_html", use_container_width=True):
-                with st.spinner("Gerando relatório HTML..."):
+                with FeedbackManager.operation_status("📄 Gerando relatório HTML..."):
                     html_relatorio = ExportManager.gerar_relatorio_filtros_html(
                         cartas=_todas_cartas,
                         ids_filtrados=st.session_state.filter_results,
@@ -2590,7 +2613,7 @@ with tab7:
 
         with col_pdf:
             if st.button("📄 Gerar PDF", key="filter_gen_pdf", use_container_width=True):
-                with st.spinner("Gerando PDF..."):
+                with FeedbackManager.operation_status("📄 Gerando PDF dos filtrados..."):
                     _pdf_filtro = ExportManager.exportar_pdf(
                         _todas_cartas,
                         st.session_state.filter_results,
@@ -2616,6 +2639,12 @@ with tab7:
 # ============================================================================
 
 with tab8:
+    # Lazy load: Tab carrega apenas quando clicado
+    if not is_tab_loaded(8):
+        st.info("⏳ Carregando busca semântica na primeira visualização...")
+        mark_tab_loaded(8)
+        st.rerun()
+
     st.header("🧠 Busca Semântica por Embeddings")
     st.markdown(
         "Encontre cartas semanticamente relacionadas à sua consulta em linguagem natural, "
@@ -2772,7 +2801,7 @@ with tab8:
                 "Use o botão '⚡ Pré-computar Embeddings' acima para criar o índice primeiro."
             )
         else:
-            with st.spinner("🔍 Buscando…"):
+            with FeedbackManager.operation_status("🔍 Buscando similaridades..."):
                 try:
                     # Busca sem threshold e sem limite: scores retornados para toda a base.
                     # O threshold é aplicado dinamicamente na UI; a paginação é reiniciada.
@@ -3075,7 +3104,7 @@ with tab8:
                 if st.button("📄 Gerar PDF", key="sem_gen_pdf", use_container_width=True):
                     _sem_ids = [_cid for _cid, _ in _resultados_filtrados]
                     _sem_scores = {_cid: _sc for _cid, _sc in _resultados_filtrados}
-                    with st.spinner("Gerando PDF..."):
+                    with FeedbackManager.operation_status("📄 Gerando PDF da busca semântica..."):
                         _pdf_sem = ExportManager.exportar_pdf(
                             _todas_cartas,
                             _sem_ids,
@@ -3099,6 +3128,12 @@ with tab8:
 # ============================================================================
 
 with tab9:
+    # Lazy load: Tab carrega apenas quando clicado
+    if not is_tab_loaded(9):
+        st.info("⏳ Carregando análise de frequência na primeira visualização...")
+        mark_tab_loaded(9)
+        st.rerun()
+
     st.header("📈 Análise de Frequência de Termos")
 
     # Inicializar frequency analyzer se não existir

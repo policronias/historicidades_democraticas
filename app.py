@@ -26,6 +26,7 @@ from modules import (
     SemanticEngine,
     StemmingEngine,
     FrequencyAnalyzer,
+    SearchSuggestions,
     build_df_fast,
     compute_chart_data_cached,
     build_semantic_csv_cached,
@@ -186,6 +187,11 @@ def initialize_session():
     # Fase 1: Lazy Loading e Search Cache
     initialize_tab_state()
     initialize_search_cache()
+
+    # Fase 3: Search Suggestions para Quick Filters
+    if 'search_suggestions_manager' not in st.session_state:
+        st.session_state.search_suggestions_manager = SearchSuggestions()
+        st.session_state.search_suggestions_manager.initialize_suggestions()
 
 
 initialize_session()
@@ -648,10 +654,41 @@ ids_resultado = st.session_state.get('search_results', [])
 ocorrencias = st.session_state.get('_last_ocorrencias', {})
 
 if ids_resultado:
+    # ========== APLICAR QUICK FILTERS ==========
+    ss = st.session_state.search_suggestions_manager
+    ids_filtrados = ss.filter_results_by_quick_filters(ids_resultado, _todas_cartas)
+
+    # ========== MÉTRICAS ==========
     col_a, col_b, col_c = st.columns(3)
-    col_a.metric("Cartas encontradas", len(ids_resultado))
-    col_b.metric("Ocorrências totais", sum(ocorrencias.values()) if ocorrencias else 0)
+    col_a.metric("Total encontrado", len(ids_resultado))
+    col_b.metric("Após filtros", len(ids_filtrados))
     col_c.metric("Escopo", st.session_state.search_scope)
+
+    # ========== PAGINAÇÃO ==========
+    if len(ids_filtrados) > 1:
+        st.markdown("---")
+        col_pag1, col_pag2, col_pag3 = st.columns([1, 2, 1])
+
+        with col_pag1:
+            if st.button("⬅️ Anterior", use_container_width=True, key="search_btn_ant"):
+                idx = ids_filtrados.index(st.session_state.current_carta_id) if st.session_state.current_carta_id in ids_filtrados else 0
+                if idx > 0:
+                    st.session_state.current_carta_id = ids_filtrados[idx - 1]
+                    st.rerun()
+
+        with col_pag2:
+            if st.session_state.current_carta_id in ids_filtrados:
+                idx = ids_filtrados.index(st.session_state.current_carta_id)
+                st.caption(f"📄 Carta {idx + 1} de {len(ids_filtrados)}")
+            else:
+                st.caption(f"📄 {len(ids_filtrados)} resultados")
+
+        with col_pag3:
+            if st.button("Próximo ➡️", use_container_width=True, key="search_btn_prox"):
+                idx = ids_filtrados.index(st.session_state.current_carta_id) if st.session_state.current_carta_id in ids_filtrados else 0
+                if idx < len(ids_filtrados) - 1:
+                    st.session_state.current_carta_id = ids_filtrados[idx + 1]
+                    st.rerun()
 
     # Mostrar variações quando usando "Variações" (calculado no momento da busca
     # e cacheado em session_state -- evita recarregar o índice de stems a cada rerun)

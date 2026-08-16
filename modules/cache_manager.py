@@ -55,15 +55,21 @@ def get_cached_search(query_key: str) -> Optional[dict]:
     return st.session_state.search_cache.get(query_key)
 
 
-def cache_search_result(query_key: str, results: dict):
-    """Armazena resultado de busca em cache"""
+def cache_search_result(query_key: str, results):
+    """Armazena resultado de busca em cache (suporta dict e list)"""
     st.session_state.search_cache[query_key] = results
 
     # Adicionar ao histórico
     if query_key not in [h.get('query') for h in st.session_state.search_history]:
+        # Calcular count: dict['ids'] para busca avançada, len(list) para semântica
+        if isinstance(results, dict):
+            count = len(results.get('ids', []))
+        else:  # list of tuples from semantic search
+            count = len(results)
+
         st.session_state.search_history.append({
             'query': query_key,
-            'count': len(results.get('ids', [])),
+            'count': count,
             'timestamp': st.session_state.get('current_time')
         })
         # Manter apenas últimas 20 buscas

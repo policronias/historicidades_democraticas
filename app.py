@@ -30,6 +30,7 @@ from modules import (
     compute_chart_data_cached,
     build_semantic_csv_cached,
     FeedbackManager,
+    SearchSuggestions,
     initialize_tab_state,
     mark_tab_loaded,
     is_tab_loaded,
@@ -186,6 +187,12 @@ def initialize_session():
     # Fase 1: Lazy Loading e Search Cache
     initialize_tab_state()
     initialize_search_cache()
+
+    # Fase 3: Search Suggestions e Quick Filters
+    if 'search_suggestions' not in st.session_state:
+        ss = SearchSuggestions()
+        ss.initialize_suggestions()
+        st.session_state.search_suggestions_manager = ss
 
 
 initialize_session()
@@ -535,6 +542,21 @@ with st.expander("ℹ️ Como usar a busca avançada"):
     - `"voto universal" +mulher` → frase exata + termo obrigatório
     """)
 
+    # ========== TERMOS FREQUENTES ==========
+    st.subheader("💡 Termos Frequentes")
+    ss = st.session_state.search_suggestions_manager
+    trending_terms = ss.get_trending_terms(5)
+
+    col1, col2, col3 = st.columns(3)
+    for i, term in enumerate(trending_terms):
+        col = [col1, col2, col3][i % 3]
+        with col:
+            if st.button(f"🔍 {term}", use_container_width=True, key=f"quick_{term}"):
+                st.session_state.search_term = term
+                st.rerun()
+
+    st.markdown("---")
+
 with st.form("search_form"):
     col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
 
@@ -567,6 +589,9 @@ with st.form("search_form"):
 
 # Executar busca quando submit
 if form_submit and termo_busca:
+    # Atualizar frequência de termos para sugestões
+    st.session_state.search_suggestions_manager.update_frequency(termo_busca)
+
     st.session_state.search_scope = escopo_busca
     st.session_state.search_tipo = tipo_busca
     _search_key = (termo_busca, tipo_busca, escopo_busca, case_sensitive)
@@ -736,6 +761,41 @@ with st.expander("📜 Histórico de Buscas Recentes"):
                 st.caption(f"{h.get('count', 0)} resultados")
     else:
         st.caption("Nenhuma busca anterior ainda")
+
+# ============================================================================
+# FILTROS RÁPIDOS
+# ============================================================================
+
+with st.expander("⚡ Filtros Rápidos"):
+    st.caption("Aplicar filtros aos resultados de busca:")
+
+    if "quick_filters" not in st.session_state:
+        st.session_state.quick_filters = {
+            "century_xx": False,
+            "only_with_data": False,
+            "only_with_location": False,
+        }
+
+    st.session_state.quick_filters["century_xx"] = st.checkbox(
+        "📅 Apenas século XX (1900-2000)",
+        value=st.session_state.quick_filters.get("century_xx", False),
+        key="filter_century_xx"
+    )
+
+    st.session_state.quick_filters["only_with_data"] = st.checkbox(
+        "📆 Apenas com data preenchida",
+        value=st.session_state.quick_filters.get("only_with_data", False),
+        key="filter_with_data"
+    )
+
+    st.session_state.quick_filters["only_with_location"] = st.checkbox(
+        "📍 Apenas com localização (município/UF)",
+        value=st.session_state.quick_filters.get("only_with_location", False),
+        key="filter_with_location"
+    )
+
+    if any(st.session_state.quick_filters.values()):
+        st.info(f"✅ {sum(st.session_state.quick_filters.values())} filtro(s) ativo(s)")
 
 st.markdown("---")
 

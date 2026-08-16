@@ -38,7 +38,13 @@ from modules import (
     cache_search_result,
 )
 from modules.config_manager import EMBEDDING_MODEL
-from modules.ui_manager import configure_page_style, get_color_scheme, get_plotly_color_palette
+from modules.ui_manager import (
+    configure_page_style,
+    get_color_scheme,
+    get_plotly_color_palette,
+    breadcrumb_nav,
+    reset_context,
+)
 
 
 # ============================================================================

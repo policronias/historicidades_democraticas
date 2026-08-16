@@ -105,23 +105,23 @@ def configure_page_style():
 
     /* Buttons — Estilo QVR Brass com melhor contraste */
     .stButton > button {
-        background: rgba(201, 154, 94, 0.25);
-        color: var(--ink);
-        border: 1.5px solid var(--brass);
-        border-radius: 6px;
-        padding: 10px 20px;
-        font-weight: 700;
-        font-family: 'Manrope', sans-serif;
-        font-size: 13px;
-        transition: all 0.15s ease;
-        cursor: pointer;
-        text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3);
+        background: rgba(201, 154, 94, 0.25) !important;
+        color: #0a0e13 !important;
+        border: 1.5px solid var(--brass) !important;
+        border-radius: 6px !important;
+        padding: 10px 20px !important;
+        font-weight: 700 !important;
+        font-family: 'Manrope', sans-serif !important;
+        font-size: 13px !important;
+        transition: all 0.15s ease !important;
+        cursor: pointer !important;
+        text-shadow: 0 1px 2px rgba(255, 255, 255, 0.3) !important;
     }
 
     .stButton > button:hover {
-        background: rgba(201, 154, 94, 0.4);
-        color: var(--ink);
-        box-shadow: 0 0 0 2px rgba(201, 154, 94, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
+        background: rgba(201, 154, 94, 0.4) !important;
+        color: #0a0e13 !important;
+        box-shadow: 0 0 0 2px rgba(201, 154, 94, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2) !important;
     }
 
     /* Input fields */
@@ -203,7 +203,9 @@ def configure_page_style():
         padding-bottom: 12px;
         margin-bottom: 20px;
         color: var(--brass-bright);
-        font-size: 16px;
+        font-size: 28px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
     }
 
     /* Horizontal line */

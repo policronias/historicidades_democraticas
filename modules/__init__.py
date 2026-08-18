@@ -35,6 +35,7 @@ from .ui_manager import (
     breadcrumb_nav,
     reset_context,
     apply_plotly_theme,
+    format_pie_labels,
 )
 from .config_manager import (
     ensure_paths_exist,
@@ -85,6 +86,7 @@ __all__ = [
     'breadcrumb_nav',
     'reset_context',
     'apply_plotly_theme',
+    'format_pie_labels',
     # Config
     'ensure_paths_exist',
     'get_path',

@@ -256,24 +256,24 @@ def show_footer():
 def get_plotly_color_palette() -> list:
     """
     Retorna a paleta de cores para gráficos Plotly.
-    Alinhada à paleta do programa (grafite/âmbar) com tons sóbrios.
+    Paleta suave e confortável, alinhada à paleta do programa (âmbar/grafite).
 
     Returns:
         Lista de cores em formato hex para uso em color_discrete_sequence
     """
     return [
-        '#d97706',  # Âmbar primário
-        '#2b2d33',  # Grafite primário
-        '#f59e0b',  # Âmbar claro
-        '#92400e',  # Marrom âmbar escuro
-        '#45474e',  # Grafite claro
-        '#1f2937',  # Grafite escuro
-        '#b45309',  # Âmbar hover
-        '#5a5c63',  # Cinza-grafite
-        '#dc2626',  # Vermelho sóbrio
-        '#0369a1',  # Azul sóbrio
-        '#65a30d',  # Verde sóbrio
-        '#7c3aed',  # Roxo sóbrio
+        '#d4a574',  # Âmbar suave primário
+        '#9ca3af',  # Grafite suave primário
+        '#e8c9a0',  # Âmbar claro pastel
+        '#c9b899',  # Grafite suave secundário
+        '#b8956e',  # Âmbar médio
+        '#6b7280',  # Grafite médio
+        '#a7f3d0',  # Verde suave (complementar)
+        '#bfdbfe',  # Azul suave (complementar)
+        '#fecaca',  # Rosa suave (complementar)
+        '#fcd34d',  # Amarelo suave
+        '#d8b4fe',  # Roxo suave
+        '#86efac',  # Verde claro suave
     ]
 
 
@@ -375,4 +375,21 @@ def apply_plotly_theme(fig):
     )
     fig.update_xaxes(showgrid=theme['xaxis']['showgrid'], gridwidth=theme['xaxis']['gridwidth'], gridcolor=theme['xaxis']['gridcolor'])
     fig.update_yaxes(showgrid=theme['yaxis']['showgrid'], gridwidth=theme['yaxis']['gridwidth'], gridcolor=theme['yaxis']['gridcolor'])
+    return fig
+
+
+def format_pie_labels(fig):
+    """
+    Formata rótulos de gráficos de pizza com valores negritados para melhor legibilidade.
+
+    Uso:
+        fig = px.pie(...)
+        format_pie_labels(fig)
+        st.plotly_chart(fig, use_container_width=True)
+    """
+    fig.update_traces(
+        textposition='inside',
+        textfont=dict(size=12, color='#f3efe3', family='Manrope', weight='bold'),
+        hovertemplate='<b>%{label}</b><br>Quantidade: %{value}<br>Percentual: %{percent}<extra></extra>'
+    )
     return fig

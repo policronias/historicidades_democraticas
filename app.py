@@ -46,6 +46,7 @@ from modules.ui_manager import (
     breadcrumb_nav,
     reset_context,
     apply_plotly_theme,
+    format_pie_labels,
 )
 
 
@@ -2258,12 +2259,14 @@ with tab6:
                         _fig = px.pie(values=_cd['sexo']['values'], names=_cd['sexo']['names'],
                                      hole=0.4, title="Distribuição por Sexo",
                                      color_discrete_sequence=_plotly_colors)
+                        format_pie_labels(_fig)
                         apply_plotly_theme(_fig)
                         st.plotly_chart(_fig, use_container_width=True)
                     if 'estado_civil' in _cd:
                         _fig = px.pie(values=_cd['estado_civil']['values'], names=_cd['estado_civil']['names'],
                                      hole=0.4, title="Estado Civil",
                                      color_discrete_sequence=_plotly_colors)
+                        format_pie_labels(_fig)
                         apply_plotly_theme(_fig)
                         st.plotly_chart(_fig, use_container_width=True)
                 with col2:
@@ -2279,6 +2282,7 @@ with tab6:
                         _fig = px.pie(values=_cd['morador']['values'], names=_cd['morador']['names'],
                                      hole=0.4, title="Zona (Urbana/Rural)",
                                      color_discrete_sequence=_plotly_colors)
+                        format_pie_labels(_fig)
                         apply_plotly_theme(_fig)
                         st.plotly_chart(_fig, use_container_width=True)
 

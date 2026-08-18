@@ -45,6 +45,7 @@ from modules.ui_manager import (
     get_plotly_color_palette,
     breadcrumb_nav,
     reset_context,
+    apply_plotly_theme,
 )
 
 
@@ -209,6 +210,16 @@ stem_e = st.session_state.stemming_engine
 _todas_cartas = dm.get_todas_cartas()
 
 
+# OTIMIZAÇÃO Tab 8: Cache do histogram para evitar O(n log n) em cada query
+@st.cache_data
+def compute_histogram_cached(scores_tuple: tuple):
+    """Calcula histogram de scores semânticos com cache"""
+    _scores_arr = np.array(scores_tuple, dtype=float)
+    _bins = np.arange(0.0, 1.051, 0.05)
+    _hist_vals, _bin_edges = np.histogram(_scores_arr, bins=_bins)
+    _bin_centers = [round((_bin_edges[i] + _bin_edges[i + 1]) / 2, 3) for i in range(len(_hist_vals))]
+    return _hist_vals.tolist(), _bin_centers
+
 
 # ============================================================================
 # BARRA LATERAL - INFORMAÇÕES E NAVEGAÇÃO
@@ -218,7 +229,7 @@ with st.sidebar:
     # Header com Home button
     col_header, col_home = st.columns([3, 1])
     with col_header:
-        st.markdown("# 📚 **Historicidades Democráticas**")
+        st.markdown("<h1 style='color: #8b6f47; margin-bottom: 0;'>📚 Historicidades Democráticas</h1>", unsafe_allow_html=True)
         st.markdown("<sub style='color: var(--text-secondary); font-size: 18px;'>Por Walderez Ramalho</sub>", unsafe_allow_html=True)
     with col_home:
         if st.button("🏠", key="home_button", help="Voltar ao início"):
@@ -581,7 +592,9 @@ if form_submit and termo_busca:
     # Tentar recuperar do cache
     _cached = get_cached_search(_query_key)
     if _cached:
-        FeedbackManager.success(f"✅ Cache: {len(_cached['ids'])} cartas encontradas")
+        # Handle both dict (advanced search) and list (semantic search) cache types
+        _cache_count = len(_cached['ids']) if isinstance(_cached, dict) else len(_cached)
+        FeedbackManager.success(f"✅ Cache: {_cache_count} cartas encontradas")
         ids_resultado, ocorrencias = _cached['ids'], _cached['ocorrencias']
     elif _search_key != st.session_state.get('_last_search_key'):
         if escopo_busca == "Somente Texto":
@@ -655,8 +668,15 @@ ocorrencias = st.session_state.get('_last_ocorrencias', {})
 
 if ids_resultado:
     # ========== APLICAR QUICK FILTERS ==========
+    # Cache quick filters: evita recompute em cada rerun
     ss = st.session_state.search_suggestions_manager
-    ids_filtrados = ss.filter_results_by_quick_filters(ids_resultado, _todas_cartas)
+    _qf_cache_key = (tuple(ids_resultado), tuple(sorted(st.session_state.quick_filters.items())))
+    if st.session_state.get('_qf_cache_key') != _qf_cache_key:
+        ids_filtrados = ss.filter_results_by_quick_filters(ids_resultado, _todas_cartas)
+        st.session_state._ids_filtrados_cached = ids_filtrados
+        st.session_state._qf_cache_key = _qf_cache_key
+    else:
+        ids_filtrados = st.session_state._ids_filtrados_cached
 
     # ========== MÉTRICAS ==========
     col_a, col_b, col_c = st.columns(3)
@@ -669,31 +689,33 @@ if ids_resultado:
         st.markdown("---")
         col_pag1, col_pag2, col_pag3 = st.columns([1, 2, 1])
 
+        # OTIMIZAÇÃO: Calcular índice UMA VEZ (evita 3x list.index() O(n))
+        _current_idx = -1
+        if st.session_state.current_carta_id in ids_filtrados:
+            _current_idx = ids_filtrados.index(st.session_state.current_carta_id)
+
         with col_pag1:
             if st.button("⬅️ Anterior", use_container_width=True, key="search_btn_ant"):
-                idx = ids_filtrados.index(st.session_state.current_carta_id) if st.session_state.current_carta_id in ids_filtrados else 0
-                if idx > 0:
-                    st.session_state.current_carta_id = ids_filtrados[idx - 1]
+                if _current_idx > 0:
+                    st.session_state.current_carta_id = ids_filtrados[_current_idx - 1]
                     st.rerun()
 
         with col_pag2:
-            if st.session_state.current_carta_id in ids_filtrados:
-                idx = ids_filtrados.index(st.session_state.current_carta_id)
-                st.caption(f"📄 Carta {idx + 1} de {len(ids_filtrados)}")
+            if _current_idx >= 0:
+                st.caption(f"📄 Carta {_current_idx + 1} de {len(ids_filtrados)}")
             else:
                 st.caption(f"📄 {len(ids_filtrados)} resultados")
 
         with col_pag3:
             if st.button("Próximo ➡️", use_container_width=True, key="search_btn_prox"):
-                idx = ids_filtrados.index(st.session_state.current_carta_id) if st.session_state.current_carta_id in ids_filtrados else 0
-                if idx < len(ids_filtrados) - 1:
-                    st.session_state.current_carta_id = ids_filtrados[idx + 1]
+                if _current_idx < len(ids_filtrados) - 1:
+                    st.session_state.current_carta_id = ids_filtrados[_current_idx + 1]
                     st.rerun()
 
     # Mostrar variações quando usando "Variações" (calculado no momento da busca
     # e cacheado em session_state -- evita recarregar o índice de stems a cada rerun)
     tipo_busca_atual = st.session_state.get('search_tipo', 'Variações')
-    if tipo_busca_atual == "Variações" and termo_busca:
+    if tipo_busca_atual == "Variações" and st.session_state.search_results:
         variacoes = st.session_state.get('_last_variacoes', [])
         if len(variacoes) > 1:
             st.caption(f"**Variações encontradas:** {' | '.join(variacoes)}")
@@ -745,9 +767,14 @@ with st.form("go_to_id_form"):
 if form_submit_id:
     if id_input.strip():
         todas_ids = dm.get_ids_cartas()
+        # OTIMIZAÇÃO: Cache string IDs set para lookup O(1)
+        _ids_set_key = hash(tuple(sorted(todas_ids)))
+        if st.session_state.get('_ids_set_key') != _ids_set_key:
+            st.session_state._ids_set = {str(id) for id in todas_ids}
+            st.session_state._ids_set_key = _ids_set_key
         # Converter para string para garantir compatibilidade com tipos
         id_input_str = str(id_input.strip())
-        if id_input_str in [str(id) for id in todas_ids]:
+        if id_input_str in st.session_state._ids_set:
             st.session_state.current_carta_id = id_input_str
             st.success(f"✅ Navegando para carta #{id_input_str}!")
             st.rerun()
@@ -867,17 +894,18 @@ with tab1:
 
             _nome_index = st.session_state.nome_index
 
-            def format_carta_option(x):
-                nome = _nome_index.get(x, 'N/A')
-                return f"#{x} - {nome[:30]}..."
+            # OTIMIZAÇÃO: Pre-format options para evitar format_func O(n)
+            _nav_ids_formatted = [f"#{x} - {_nome_index.get(x, 'N/A')[:30]}..." for x in nav_ids]
+            _nav_ids_dict = {_nav_ids_formatted[i]: nav_ids[i] for i in range(len(nav_ids))}
 
-            st.selectbox(
+            _selected_label = st.selectbox(
                 "Pular para carta (por ID):",
-                options=nav_ids,
+                options=_nav_ids_formatted,
                 index=current_idx_nav,
-                format_func=format_carta_option,
-                key="nav_select"
+                key="nav_select_formatted"
             )
+
+            st.session_state.nav_select = _nav_ids_dict.get(_selected_label, nav_ids[0])
 
             if st.session_state.nav_select != st.session_state.current_carta_id:
                 st.session_state.current_carta_id = st.session_state.nav_select
@@ -2122,9 +2150,9 @@ with tab5:
 with tab6:
     # Lazy load: Tab carrega apenas quando clicado
     if not is_tab_loaded(6):
-        st.info("⏳ Carregando gráficos e tabelas na primeira visualização...")
         mark_tab_loaded(6)
         st.rerun()
+        st.stop()
 
     st.header("📊 Gráficos e Tabelas")
     breadcrumb_nav("Home", "Gráficos e Tabelas")
@@ -2227,13 +2255,17 @@ with tab6:
                 col1, col2 = st.columns(2)
                 with col1:
                     if 'sexo' in _cd:
-                        st.plotly_chart(px.pie(values=_cd['sexo']['values'], names=_cd['sexo']['names'],
-                                               hole=0.4, title="Distribuição por Sexo",
-                                               color_discrete_sequence=_plotly_colors), use_container_width=True)
+                        _fig = px.pie(values=_cd['sexo']['values'], names=_cd['sexo']['names'],
+                                     hole=0.4, title="Distribuição por Sexo",
+                                     color_discrete_sequence=_plotly_colors)
+                        apply_plotly_theme(_fig)
+                        st.plotly_chart(_fig, use_container_width=True)
                     if 'estado_civil' in _cd:
-                        st.plotly_chart(px.pie(values=_cd['estado_civil']['values'], names=_cd['estado_civil']['names'],
-                                               hole=0.4, title="Estado Civil",
-                                               color_discrete_sequence=_plotly_colors), use_container_width=True)
+                        _fig = px.pie(values=_cd['estado_civil']['values'], names=_cd['estado_civil']['names'],
+                                     hole=0.4, title="Estado Civil",
+                                     color_discrete_sequence=_plotly_colors)
+                        apply_plotly_theme(_fig)
+                        st.plotly_chart(_fig, use_container_width=True)
                 with col2:
                     if 'faixa_etaria' in _cd:
                         _d = _cd['faixa_etaria']
@@ -2241,25 +2273,30 @@ with tab6:
                                       labels={'x': 'Faixa Etária', 'y': 'Quantidade'},
                                       color_discrete_sequence=[_plotly_colors[0]])
                         _fig.update_xaxes(tickangle=-45)
+                        apply_plotly_theme(_fig)
                         st.plotly_chart(_fig, use_container_width=True)
                     if 'morador' in _cd:
-                        st.plotly_chart(px.pie(values=_cd['morador']['values'], names=_cd['morador']['names'],
-                                               hole=0.4, title="Zona (Urbana/Rural)",
-                                               color_discrete_sequence=_plotly_colors), use_container_width=True)
+                        _fig = px.pie(values=_cd['morador']['values'], names=_cd['morador']['names'],
+                                     hole=0.4, title="Zona (Urbana/Rural)",
+                                     color_discrete_sequence=_plotly_colors)
+                        apply_plotly_theme(_fig)
+                        st.plotly_chart(_fig, use_container_width=True)
 
             col3, col4 = st.columns(2)
             with col3:
                 if 'instrucao' in _cd:
                     _d = _cd['instrucao']
-                    st.plotly_chart(px.bar(x=_d['values'], y=_d['names'], orientation='h', title="Escolaridade",
-                                           color_discrete_sequence=[_plotly_colors[0]]),
-                                    use_container_width=True)
+                    _fig = px.bar(x=_d['values'], y=_d['names'], orientation='h', title="Escolaridade",
+                                 color_discrete_sequence=[_plotly_colors[0]])
+                    apply_plotly_theme(_fig)
+                    st.plotly_chart(_fig, use_container_width=True)
             with col4:
                 if 'faixa_renda' in _cd:
                     _d = _cd['faixa_renda']
-                    st.plotly_chart(px.bar(x=_d['values'], y=_d['names'], orientation='h', title="Faixa de Renda",
-                                           color_discrete_sequence=[_plotly_colors[0]]),
-                                    use_container_width=True)
+                    _fig = px.bar(x=_d['values'], y=_d['names'], orientation='h', title="Faixa de Renda",
+                                 color_discrete_sequence=[_plotly_colors[0]])
+                    apply_plotly_theme(_fig)
+                    st.plotly_chart(_fig, use_container_width=True)
 
         # ========== SEÇÃO B: LOCALIDADE ==========
         with st.expander("📍 Localidade", expanded=True):
@@ -2270,10 +2307,14 @@ with tab6:
                 with col1:
                     if 'uf' in _cd:
                         _d = _cd['uf']
-                        _fig = px.bar(x=_d['names'][:15], y=_d['values'][:15],
-                                      title="Cartas por UF (Top 15)", labels={'x': 'Estado', 'y': 'Quantidade'},
+                        _total_ufs = len(_d['names'])
+                        _top_n = min(15, _total_ufs)
+                        _title = f"Cartas por UF (Top {_top_n}" + (" de " + str(_total_ufs) + ")" if _top_n < _total_ufs else ")")
+                        _fig = px.bar(x=_d['names'][:_top_n], y=_d['values'][:_top_n],
+                                      title=_title, labels={'x': 'Estado', 'y': 'Quantidade'},
                                       color_discrete_sequence=[_plotly_colors[0]])
                         _fig.update_xaxes(tickangle=-45)
+                        apply_plotly_theme(_fig)
                         st.plotly_chart(_fig, use_container_width=True)
                 with col2:
                     if 'municipio' in _cd:
@@ -2285,10 +2326,11 @@ with tab6:
                     st.subheader("Cartas por Estado (Todos)")
                     _d = _cd['uf']
                     _uf_df = pd.DataFrame({'Estado': _d['names'][::-1], 'Quantidade': _d['values'][::-1]})
-                    st.plotly_chart(px.bar(_uf_df, x='Quantidade', y='Estado', orientation='h',
-                                           title="Distribuição Geográfica das Cartas por Estado",
-                                           color='Quantidade', color_continuous_scale=['#2b2d33', '#d97706']),
-                                    use_container_width=True)
+                    _fig = px.bar(_uf_df, x='Quantidade', y='Estado', orientation='h',
+                                 title="Distribuição Geográfica das Cartas por Estado",
+                                 color='Quantidade', color_continuous_scale=['#2b2d33', '#d97706'])
+                    apply_plotly_theme(_fig)
+                    st.plotly_chart(_fig, use_container_width=True)
 
         # ========== SEÇÃO C: CONTEÚDO TEMÁTICO ==========
         with st.expander("📚 Conteúdo Temático", expanded=True):
@@ -2299,31 +2341,38 @@ with tab6:
                 with col1:
                     if 'atividade' in _cd:
                         _d = _cd['atividade']
-                        st.plotly_chart(px.bar(x=_d['values'], y=_d['names'], orientation='h',
-                                               title="Atividade/Ocupação",
-                                               labels={'x': 'Quantidade', 'y': 'Atividade'},
-                                               color_discrete_sequence=[_plotly_colors[0]]),
-                                        use_container_width=True)
+                        _fig = px.bar(x=_d['values'], y=_d['names'], orientation='h',
+                                     title="Atividade/Ocupação",
+                                     labels={'x': 'Quantidade', 'y': 'Atividade'},
+                                     color_discrete_sequence=[_plotly_colors[0]])
+                        apply_plotly_theme(_fig)
+                        st.plotly_chart(_fig, use_container_width=True)
                     if 'origem' in _cd:
                         _d = _cd['origem']
                         _fig = px.bar(x=_d['names'], y=_d['values'], title="Cartas por Origem (Lote)",
                                       labels={'x': 'Origem', 'y': 'Quantidade'},
                                       color_discrete_sequence=[_plotly_colors[0]])
                         _fig.update_xaxes(tickangle=-45)
+                        apply_plotly_theme(_fig)
                         st.plotly_chart(_fig, use_container_width=True)
                 with col2:
                     if 'catalogo' in _cd:
                         _d = _cd['catalogo']
-                        st.plotly_chart(px.bar(x=_d['values'][:15], y=_d['names'][:15], orientation='h',
-                                               title="Catálogos Mais Frequentes (Top 15)",
-                                               color_discrete_sequence=[_plotly_colors[0]]),
-                                        use_container_width=True)
+                        _total_cats = len(_d['names'])
+                        _top_n_cats = min(15, _total_cats)
+                        _title_cats = f"Catálogos Mais Frequentes (Top {_top_n_cats}" + (" de " + str(_total_cats) + ")" if _top_n_cats < _total_cats else ")")
+                        _fig = px.bar(x=_d['values'][:_top_n_cats], y=_d['names'][:_top_n_cats], orientation='h',
+                                     title=_title_cats,
+                                     color_discrete_sequence=[_plotly_colors[0]])
+                        apply_plotly_theme(_fig)
+                        st.plotly_chart(_fig, use_container_width=True)
                     if 'indexacao' in _cd:
                         _d = _cd['indexacao']
-                        st.plotly_chart(px.bar(x=_d['values'][:20], y=_d['names'][:20], orientation='h',
-                                               title="Indexações Mais Frequentes (Top 20)",
-                                               color_discrete_sequence=[_plotly_colors[0]]),
-                                        use_container_width=True)
+                        _fig = px.bar(x=_d['values'][:20], y=_d['names'][:20], orientation='h',
+                                     title="Indexações Mais Frequentes (Top 20)",
+                                     color_discrete_sequence=[_plotly_colors[0]])
+                        apply_plotly_theme(_fig)
+                        st.plotly_chart(_fig, use_container_width=True)
 
     else:
         st.error("❌ Nenhuma carta disponível para o escopo selecionado. Ajuste suas opções.")
@@ -2346,9 +2395,9 @@ def _get_unique_values_from_dict(cartas_dict, campo):
 with tab7:
     # Lazy load: Tab carrega apenas quando clicado
     if not is_tab_loaded(7):
-        st.info("⏳ Carregando filtros na primeira visualização...")
         mark_tab_loaded(7)
         st.rerun()
+        st.stop()
 
     st.header("🎯 Filtros Avançados")
     breadcrumb_nav("Home", "Filtros Avançados")
@@ -2406,27 +2455,27 @@ with tab7:
     else:
         _uv_tab7 = st.session_state['_uv_tab7']
 
-    # Layout dos filtros em colunas
-    cols = st.columns(3)
+    # Layout dos filtros em colunas com batch update
+    with st.form("filter_form"):
+        cols = st.columns(3)
+        _filter_temp = {}
 
-    for idx, (campo, label) in enumerate(campos_filtro.items()):
-        col = cols[idx % 3]
+        for idx, (campo, label) in enumerate(campos_filtro.items()):
+            col = cols[idx % 3]
 
-        with col:
-            valores_unicos = _uv_tab7.get(campo, [])
+            with col:
+                valores_unicos = _uv_tab7.get(campo, [])
+                _filter_temp[campo] = st.multiselect(
+                    label,
+                    options=valores_unicos,
+                    default=st.session_state.active_filters.get(campo, []),
+                    key=f"filter_{campo}"
+                )
 
-            st.multiselect(
-                label,
-                options=valores_unicos,
-                default=st.session_state.active_filters.get(campo, []),
-                key=f"filter_{campo}"
-            )
-
-            valores = st.session_state.get(f"filter_{campo}", [])
-            if valores:
-                st.session_state.active_filters[campo] = valores
-            elif campo in st.session_state.active_filters:
-                del st.session_state.active_filters[campo]
+        if st.form_submit_button("Aplicar Filtros", use_container_width=True):
+            st.session_state.active_filters = {
+                k: v for k, v in _filter_temp.items() if v
+            }
 
     st.markdown("---")
 
@@ -2445,10 +2494,10 @@ with tab7:
 
                 for campo, valores_selecionados in st.session_state.active_filters.items():
                     valor_carta = str(carta.get(campo, '')).strip()
-                    valores_correspondentes = [str(v).strip() for v in valores_selecionados]
+                    valores_correspondentes_set = {str(v).strip() for v in valores_selecionados}
 
                     if valor_carta and valor_carta != 'nan' and valor_carta != 'None':
-                        if valor_carta not in valores_correspondentes:
+                        if valor_carta not in valores_correspondentes_set:
                             incluir_carta = False
                             break
                     else:
@@ -2768,9 +2817,9 @@ with tab7:
 with tab8:
     # Lazy load: Tab carrega apenas quando clicado
     if not is_tab_loaded(8):
-        st.info("⏳ Carregando busca semântica na primeira visualização...")
         mark_tab_loaded(8)
         st.rerun()
+        st.stop()
 
     st.header("🧠 Busca Semântica por Embeddings")
     breadcrumb_nav("Home", "Busca Semântica")
@@ -2916,6 +2965,11 @@ with tab8:
             )
         )
 
+        # OTIMIZAÇÃO: Reset página quando threshold muda (evita página inválida)
+        if st.session_state.get('_last_threshold_sem') != _threshold_sem:
+            st.session_state.semantic_page = 1
+            st.session_state._last_threshold_sem = _threshold_sem
+
         form_submit_sem = st.form_submit_button(
             "🔍 Buscar por Similaridade",
             use_container_width=True
@@ -2970,12 +3024,18 @@ with tab8:
         _todos_resultados = st.session_state.semantic_results
         _todos_scores = [score for _, score in _todos_resultados]
 
-        # Aplicar threshold do slider dinamicamente
-        _resultados_filtrados = [
-            (carta_id, score)
-            for carta_id, score in _todos_resultados
-            if score >= _threshold_sem
-        ]
+        # Cache threshold filtragem: evita recompute em cada slider drag
+        _threshold_cache_key = (len(_todos_resultados), round(_threshold_sem, 4))
+        if st.session_state.get('_threshold_cache_key') != _threshold_cache_key:
+            _resultados_filtrados = [
+                (carta_id, score)
+                for carta_id, score in _todos_resultados
+                if score >= _threshold_sem
+            ]
+            st.session_state._resultados_filtrados = _resultados_filtrados
+            st.session_state._threshold_cache_key = _threshold_cache_key
+        else:
+            _resultados_filtrados = st.session_state._resultados_filtrados
 
         # Métricas em destaque
         _col_m1, _col_m2 = st.columns(2)
@@ -2988,20 +3048,8 @@ with tab8:
             f"{len(_todos_resultados):,}"
         )
 
-        # Histograma de distribuição de scores — recomputa apenas quando os resultados mudam
-        _sem_hist_key = len(_todos_resultados)
-        if st.session_state.get('_sem_hist_key') != _sem_hist_key:
-            _scores_arr = np.array(_todos_scores, dtype=float)
-            _bins = np.arange(0.0, 1.051, 0.05)
-            _hist_vals_c, _bin_edges_c = np.histogram(_scores_arr, bins=_bins)
-            st.session_state['_sem_hist_key'] = _sem_hist_key
-            st.session_state['_sem_hist_vals'] = _hist_vals_c.tolist()
-            st.session_state['_sem_hist_bin_centers'] = [
-                round((_bin_edges_c[i] + _bin_edges_c[i + 1]) / 2, 3)
-                for i in range(len(_hist_vals_c))
-            ]
-        _hist_vals = st.session_state['_sem_hist_vals']
-        _bin_centers = st.session_state['_sem_hist_bin_centers']
+        # Histograma de distribuição de scores com @st.cache_data
+        _hist_vals, _bin_centers = compute_histogram_cached(tuple(_todos_scores))
 
         _fig_hist = go.Figure()
         _fig_hist.add_trace(go.Bar(
@@ -3033,6 +3081,7 @@ with tab8:
             showlegend=False,
             bargap=0.05
         )
+        apply_plotly_theme(_fig_hist)
         st.plotly_chart(_fig_hist, use_container_width=True)
 
         if not _resultados_filtrados:
@@ -3077,7 +3126,12 @@ with tab8:
 
             # OTIMIZAÇÃO PHASE 2: Pré-carregar séries de cartas do expander se necessário
             # (lazy-load: só carrega quando expander é aberto pela primeira vez)
-            _series_carta_cache = {}
+            # Cache series per query para não refetch ao paginar
+            _query_hash = hash(st.session_state.get('semantic_query', ''))
+            if st.session_state.get('_semantic_series_cache_query') != _query_hash:
+                st.session_state._semantic_series_cache = {}
+                st.session_state._semantic_series_cache_query = _query_hash
+            _series_carta_cache = st.session_state._semantic_series_cache
 
             _rerun_semantica = False
             for _rank_global, (_carta_id_sem, _score_sem) in enumerate(
@@ -3221,10 +3275,17 @@ with tab8:
                 )
             with _col_sem_parquet:
                 _sem_ids_pq = [_cid for _cid, _ in _resultados_filtrados]
-                _pq_sem_idx = {}
-                for _nssem, _sisem in sm.series.items():
-                    for _cidsem in _sisem['cartas']:
-                        _pq_sem_idx.setdefault(_cidsem, []).append(_nssem)
+                # OTIMIZAÇÃO: Cache índice de séries (não muda a cada render)
+                _series_hash = hash(tuple(sorted(sm.series.keys())))
+                if st.session_state.get('_series_idx_hash') != _series_hash:
+                    _pq_sem_idx = {}
+                    for _nssem, _sisem in sm.series.items():
+                        for _cidsem in _sisem['cartas']:
+                            _pq_sem_idx.setdefault(_cidsem, []).append(_nssem)
+                    st.session_state._pq_sem_idx_cached = _pq_sem_idx
+                    st.session_state._series_idx_hash = _series_hash
+                else:
+                    _pq_sem_idx = st.session_state._pq_sem_idx_cached
                 _pq_sem = ExportManager.exportar_parquet(
                     _todas_cartas,
                     _sem_ids_pq,
@@ -3269,9 +3330,9 @@ with tab8:
 with tab9:
     # Lazy load: Tab carrega apenas quando clicado
     if not is_tab_loaded(9):
-        st.info("⏳ Carregando análise de frequência na primeira visualização...")
         mark_tab_loaded(9)
         st.rerun()
+        st.stop()
 
     st.header("📈 Análise de Frequência de Termos")
     breadcrumb_nav("Home", "Análise de Frequência")
@@ -3396,6 +3457,7 @@ with tab9:
                         showlegend=False,
                         hovermode='x unified'
                     )
+                    apply_plotly_theme(fig_ocorr)
                     st.plotly_chart(fig_ocorr, use_container_width=True)
 
                 with col_g2:
@@ -3416,6 +3478,7 @@ with tab9:
                         showlegend=False,
                         hovermode='x unified'
                     )
+                    apply_plotly_theme(fig_docs)
                     st.plotly_chart(fig_docs, use_container_width=True)
 
                 # Detalhes por termo

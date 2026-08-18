@@ -232,11 +232,10 @@ def show_academic_header():
         st.markdown("📚")
     with col2:
         st.markdown("""
-        ### Historicidades Democráticas
-        **Plataforma de Análise de Documentos Históricos**
-        
-        Navegue, busque, anote e analise correspondência histórica constitucional.
-        """)
+        <h3 style="color: #8b6f47; margin-bottom: 0;">Historicidades Democráticas</h3>
+        <p style="margin-top: 0; font-weight: 600; color: var(--text-secondary);">Plataforma de Análise de Documentos Históricos</p>
+        <p style="color: var(--text-secondary); font-size: 14px;">Navegue, busque, anote e analise correspondência histórica constitucional.</p>
+        """, unsafe_allow_html=True)
 
 
 def show_footer():
@@ -340,3 +339,40 @@ def reset_context():
         st.session_state.search_results = []
     if 'semantic_results' in st.session_state:
         st.session_state.semantic_results = []
+
+
+def get_plotly_theme_template():
+    """
+    Retorna um dicionário de configurações para aplicar o tema do programa
+    em gráficos Plotly, incluindo layouts, fontes e cores.
+    """
+    return {
+        'plot_bgcolor': 'rgba(0,0,0,0)',
+        'paper_bgcolor': 'rgba(0,0,0,0)',
+        'font': {'family': 'Manrope, sans-serif', 'color': '#f3efe3'},
+        'xaxis': {'showgrid': True, 'gridwidth': 1, 'gridcolor': '#3a4d5c'},
+        'yaxis': {'showgrid': True, 'gridwidth': 1, 'gridcolor': '#3a4d5c'},
+        'title': {'font': {'size': 16, 'color': '#f3efe3'}, 'x': 0.5, 'xanchor': 'center'},
+    }
+
+
+def apply_plotly_theme(fig):
+    """
+    Aplica o tema visual do programa a um gráfico Plotly.
+
+    Uso:
+        fig = px.bar(...)
+        apply_plotly_theme(fig)
+        st.plotly_chart(fig, use_container_width=True)
+    """
+    theme = get_plotly_theme_template()
+    fig.update_layout(
+        plot_bgcolor=theme['plot_bgcolor'],
+        paper_bgcolor=theme['paper_bgcolor'],
+        font=theme['font'],
+        showlegend=True,
+        legend=dict(x=1.0, y=1.0, bgcolor='rgba(0,0,0,0.3)', bordercolor='#3a4d5c', borderwidth=1)
+    )
+    fig.update_xaxes(showgrid=theme['xaxis']['showgrid'], gridwidth=theme['xaxis']['gridwidth'], gridcolor=theme['xaxis']['gridcolor'])
+    fig.update_yaxes(showgrid=theme['yaxis']['showgrid'], gridwidth=theme['yaxis']['gridwidth'], gridcolor=theme['yaxis']['gridcolor'])
+    return fig

@@ -836,62 +836,84 @@ with tab1:
 
     col1, col2, col3 = st.columns([2, 1, 1])
 
-    with col1:
-        if nav_ids:
-            # Sincronizar o selectbox com a carta atual (sem index=, evita conflito de estado)
-            st.session_state.nav_select = st.session_state.current_carta_id
+    if nav_ids:
+        # Garante que a carta atual exista na lista de navegação (evita ValueError)
+        if st.session_state.current_carta_id not in nav_ids:
+            st.session_state.current_carta_id = nav_ids[0]
 
+        _nome_index = st.session_state.nome_index
+
+        def _format_nav_carta(cid):
+            nome = _nome_index.get(cid, 'N/A')
+            sufixo = '...' if len(nome) > 30 else ''
+            return f"#{cid} - {nome[:30]}{sufixo}"
+
+        # PADRÃO ÚNICO DE NAVEGAÇÃO (fonte única de verdade: current_carta_id)
+        #
+        # Problema anterior: o selectbox guardava a seleção sob uma chave própria
+        # (nav_select_formatted) e o código comparava seu valor com
+        # current_carta_id a cada execução, sobrescrevendo current_carta_id
+        # sempre que os dois divergissem. Como o Streamlit ignora o parâmetro
+        # `index=` de um widget já instanciado (usa o valor salvo em
+        # session_state[key]), isso desfazia silenciosamente qualquer mudança
+        # feita pelos botões Anterior/Próximo no rerun seguinte.
+        #
+        # Solução: o selectbox usa current_carta_id diretamente como chave
+        # (nav_select_id), sem index=. Mudanças feitas por FORA deste controle
+        # (botões, "Ir para Carta", links de outras abas) são detectadas via
+        # o sentinel _nav_last_synced_id e propagadas para o widget ANTES dele
+        # ser instanciado nesta execução. Mudanças feitas pelo próprio widget
+        # são propagadas via on_change. Nunca as duas direções ao mesmo tempo.
+        if st.session_state.get('_nav_last_synced_id') != st.session_state.current_carta_id:
+            st.session_state.nav_select_id = st.session_state.current_carta_id
+            st.session_state._nav_last_synced_id = st.session_state.current_carta_id
+
+        def _on_nav_select_change():
+            _novo_id = st.session_state.nav_select_id
+            st.session_state.current_carta_id = _novo_id
+            st.session_state._nav_last_synced_id = _novo_id
+            st.session_state.sidebar_series_context = 'explorar'
+
+        def _explorar_anterior():
             try:
-                current_idx_nav = nav_ids.index(st.session_state.current_carta_id)
+                idx = nav_ids.index(st.session_state.current_carta_id)
+                if idx > 0:
+                    _novo_id = nav_ids[idx - 1]
+                    st.session_state.current_carta_id = _novo_id
+                    st.session_state.nav_select_id = _novo_id
+                    st.session_state._nav_last_synced_id = _novo_id
+                    st.session_state.sidebar_series_context = 'explorar'
             except ValueError:
-                current_idx_nav = 0
+                pass
 
-            _nome_index = st.session_state.nome_index
+        def _explorar_proximo():
+            try:
+                idx = nav_ids.index(st.session_state.current_carta_id)
+                if idx < len(nav_ids) - 1:
+                    _novo_id = nav_ids[idx + 1]
+                    st.session_state.current_carta_id = _novo_id
+                    st.session_state.nav_select_id = _novo_id
+                    st.session_state._nav_last_synced_id = _novo_id
+                    st.session_state.sidebar_series_context = 'explorar'
+            except ValueError:
+                pass
 
-            # OTIMIZAÇÃO: Pre-format options para evitar format_func O(n)
-            _nav_ids_formatted = [f"#{x} - {_nome_index.get(x, 'N/A')[:30]}..." for x in nav_ids]
-            _nav_ids_dict = {_nav_ids_formatted[i]: nav_ids[i] for i in range(len(nav_ids))}
-
-            _selected_label = st.selectbox(
+        with col1:
+            st.selectbox(
                 "Pular para carta (por ID):",
-                options=_nav_ids_formatted,
-                index=current_idx_nav,
-                key="nav_select_formatted"
+                options=nav_ids,
+                format_func=_format_nav_carta,
+                key="nav_select_id",
+                on_change=_on_nav_select_change
             )
 
-            st.session_state.nav_select = _nav_ids_dict.get(_selected_label, nav_ids[0])
+        with col2:
+            st.button("⬅️ Anterior", use_container_width=True, key="explorar_btn_anterior",
+                      on_click=_explorar_anterior)
 
-            if st.session_state.nav_select != st.session_state.current_carta_id:
-                st.session_state.current_carta_id = st.session_state.nav_select
-                st.session_state.sidebar_series_context = 'explorar'
-
-    with col2:
-        def _explorar_anterior():
-            if nav_ids:
-                try:
-                    idx = nav_ids.index(st.session_state.current_carta_id)
-                    if idx > 0:
-                        st.session_state.current_carta_id = nav_ids[idx - 1]
-                        st.session_state.sidebar_series_context = 'explorar'
-                        st.rerun()
-                except ValueError:
-                    pass
-        st.button("⬅️ Anterior", use_container_width=True, key="explorar_btn_anterior",
-                  on_click=_explorar_anterior)
-
-    with col3:
-        def _explorar_proximo():
-            if nav_ids:
-                try:
-                    idx = nav_ids.index(st.session_state.current_carta_id)
-                    if idx < len(nav_ids) - 1:
-                        st.session_state.current_carta_id = nav_ids[idx + 1]
-                        st.session_state.sidebar_series_context = 'explorar'
-                        st.rerun()
-                except ValueError:
-                    pass
-        st.button("Próximo ➡️", use_container_width=True, key="explorar_btn_proximo",
-                  on_click=_explorar_proximo)
+        with col3:
+            st.button("Próximo ➡️", use_container_width=True, key="explorar_btn_proximo",
+                      on_click=_explorar_proximo)
 
     # Exibição da carta
     if st.session_state.current_carta_id:
@@ -2493,56 +2515,72 @@ with tab7:
             if st.session_state.get('filter_nav_select') not in ids_resultado:
                 st.session_state.filter_nav_select = ids_resultado[0]
 
+            # Mesmo padrão de sincronização usado na aba Explorar (ver comentário
+            # detalhado lá): current_carta_id é a fonte única de verdade.
+            # Mudanças externas (ex.: "Ir para Carta") só são propagadas para o
+            # widget quando o alvo pertence aos resultados filtrados atuais.
+            if (
+                st.session_state.get('_filter_nav_last_synced_id') != st.session_state.current_carta_id
+                and st.session_state.current_carta_id in ids_resultado
+            ):
+                st.session_state.filter_nav_select = st.session_state.current_carta_id
+            st.session_state._filter_nav_last_synced_id = st.session_state.filter_nav_select
+
             # Navegação e seleção
             col1, col2, col3 = st.columns([2, 1, 1])
 
-            with col1:
-                _filter_nome_index = st.session_state.nome_index
+            _filter_nome_index = st.session_state.nome_index
 
+            def _format_filter_carta(cid):
+                return f"#{cid} - {_filter_nome_index.get(cid, 'N/A')[:40]}..."
+
+            def _sync_filter_from_widget():
+                _sel = st.session_state.filter_nav_select
+                st.session_state.current_carta_id = _sel
+                st.session_state._filter_nav_last_synced_id = _sel
+                st.session_state.sidebar_series_carta_id = _sel
+                st.session_state.sidebar_series_context = 'filtro'
+
+            def _filter_anterior():
+                try:
+                    idx = ids_resultado.index(st.session_state.filter_nav_select)
+                    if idx > 0:
+                        _new = ids_resultado[idx - 1]
+                        st.session_state.filter_nav_select = _new
+                        st.session_state.current_carta_id = _new
+                        st.session_state._filter_nav_last_synced_id = _new
+                        st.session_state.sidebar_series_carta_id = _new
+                        st.session_state.sidebar_series_context = 'filtro'
+                except ValueError:
+                    pass
+
+            def _filter_proximo():
+                try:
+                    idx = ids_resultado.index(st.session_state.filter_nav_select)
+                    if idx < len(ids_resultado) - 1:
+                        _new = ids_resultado[idx + 1]
+                        st.session_state.filter_nav_select = _new
+                        st.session_state.current_carta_id = _new
+                        st.session_state._filter_nav_last_synced_id = _new
+                        st.session_state.sidebar_series_carta_id = _new
+                        st.session_state.sidebar_series_context = 'filtro'
+                except ValueError:
+                    pass
+
+            with col1:
                 st.selectbox(
                     "Selecionar carta dos resultados:",
                     options=ids_resultado,
-                    format_func=lambda x: f"#{x} - {_filter_nome_index.get(x, 'N/A')[:40]}...",
-                    key="filter_nav_select"
+                    format_func=_format_filter_carta,
+                    key="filter_nav_select",
+                    on_change=_sync_filter_from_widget
                 )
 
-                _sel = st.session_state.filter_nav_select
-                if _sel != st.session_state.current_carta_id:
-                    st.session_state.current_carta_id = _sel
-                    st.session_state.sidebar_series_carta_id = _sel
-                    st.session_state.sidebar_series_context = 'filtro'
-
             with col2:
-                def _filter_anterior():
-                    _sel = st.session_state.get('filter_nav_select')
-                    try:
-                        idx = ids_resultado.index(_sel)
-                        if idx > 0:
-                            _new = ids_resultado[idx - 1]
-                            st.session_state.filter_nav_select = _new
-                            st.session_state.current_carta_id = _new
-                            st.session_state.sidebar_series_carta_id = _new
-                            st.session_state.sidebar_series_context = 'filtro'
-                            st.rerun()
-                    except ValueError:
-                        pass
                 st.button("⬅️ Anterior", use_container_width=True, key="filter_btn_anterior",
                           on_click=_filter_anterior)
 
             with col3:
-                def _filter_proximo():
-                    _sel = st.session_state.get('filter_nav_select')
-                    try:
-                        idx = ids_resultado.index(_sel)
-                        if idx < len(ids_resultado) - 1:
-                            _new = ids_resultado[idx + 1]
-                            st.session_state.filter_nav_select = _new
-                            st.session_state.current_carta_id = _new
-                            st.session_state.sidebar_series_carta_id = _new
-                            st.session_state.sidebar_series_context = 'filtro'
-                            st.rerun()
-                    except ValueError:
-                        pass
                 st.button("Próximo ➡️", use_container_width=True, key="filter_btn_proximo",
                           on_click=_filter_proximo)
 

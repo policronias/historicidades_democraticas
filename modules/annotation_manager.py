@@ -1,12 +1,13 @@
 """
 Gerenciador de anotações vinculadas a cartas e caderno de pesquisa global.
-Responsável por persistência automática de anotações.
+Responsável por persistência automática de anotações com file locking para evitar race conditions.
 """
 
 import json
 import os
 from typing import Dict, Optional
 from datetime import datetime
+from filelock import FileLock, Timeout
 
 
 class AnnotationManager:
@@ -49,7 +50,7 @@ class AnnotationManager:
 
     def save_session(self, series: Optional[Dict] = None) -> bool:
         """
-        Salva a sessão atual em arquivo.
+        Salva a sessão atual em arquivo com file locking para evitar race conditions.
 
         Args:
             series: Dicionário de séries (opcional). Se omitido, preserva as
@@ -60,34 +61,40 @@ class AnnotationManager:
         """
         os.makedirs(os.path.dirname(self.session_file) or '.', exist_ok=True)
 
+        lock_path = self.session_file + '.lock'
+        lock = FileLock(lock_path, timeout=5)
+
         try:
-            # Se series não foi passado, lê do arquivo para não sobrescrever
-            if series is None:
-                series_to_save = {}
-                if os.path.exists(self.session_file):
-                    try:
-                        with open(self.session_file, 'r', encoding='utf-8') as f:
-                            series_to_save = json.load(f).get('series', {})
-                    except Exception:
-                        pass
-            else:
-                series_to_save = series
+            with lock:
+                # Se series não foi passado, lê do arquivo para não sobrescrever
+                if series is None:
+                    series_to_save = {}
+                    if os.path.exists(self.session_file):
+                        try:
+                            with open(self.session_file, 'r', encoding='utf-8') as f:
+                                series_to_save = json.load(f).get('series', {})
+                        except Exception:
+                            pass
+                else:
+                    series_to_save = series
 
-            data = {
-                'anotacoes': self.anotacoes,
-                'caderno_pesquisa': self.caderno_pesquisa,
-                'series': series_to_save,
-                'ultimo_update': datetime.now().isoformat()
-            }
+                data = {
+                    'anotacoes': self.anotacoes,
+                    'caderno_pesquisa': self.caderno_pesquisa,
+                    'series': series_to_save,
+                    'ultimo_update': datetime.now().isoformat()
+                }
 
-            # Escrita atômica: grava em temp e renomeia — evita corrupção em crash
-            _tmp = self.session_file + '.tmp'
-            with open(_tmp, 'w', encoding='utf-8') as f:
-                json.dump(data, f, ensure_ascii=False, separators=(',', ':'))
-            os.replace(_tmp, self.session_file)
+                # Escrita atômica: grava em temp e renomeia — evita corrupção em crash
+                _tmp = self.session_file + '.tmp'
+                with open(_tmp, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, ensure_ascii=False, separators=(',', ':'))
+                os.replace(_tmp, self.session_file)
 
-            self.ultimo_update = data['ultimo_update']
-            return True
+                self.ultimo_update = data['ultimo_update']
+                return True
+        except Timeout:
+            return False
         except Exception:
             return False
 

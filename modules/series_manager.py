@@ -1,12 +1,13 @@
 """
 Gerenciador de séries temáticas.
-Permite criar, editar, deletar séries e vincular cartas a elas.
+Permite criar, editar, deletar séries e vincular cartas a elas com file locking para evitar race conditions.
 """
 
 import json
 import os
 from typing import Dict, List, Set, Tuple, Optional
 from datetime import datetime
+from filelock import FileLock, Timeout
 
 
 class SeriesManager:
@@ -56,7 +57,7 @@ class SeriesManager:
 
     def save_session(self, annotation_manager=None) -> bool:
         """
-        Salva séries na sessão.
+        Salva séries na sessão com file locking para evitar race conditions.
 
         Args:
             annotation_manager: AnnotationManager para salvar junto
@@ -66,42 +67,48 @@ class SeriesManager:
         """
         os.makedirs(os.path.dirname(self.session_file) or '.', exist_ok=True)
 
+        lock_path = self.session_file + '.lock'
+        lock = FileLock(lock_path, timeout=5)
+
         try:
-            # Converte sets para listas para JSON
-            series_serializable = {}
-            for nome, serie_info in self.series.items():
-                series_serializable[nome] = {
-                    'cartas': list(serie_info['cartas']),
-                    'descricao': serie_info.get('descricao', ''),
-                    'criada_em': serie_info.get('criada_em', datetime.now().isoformat())
-                }
+            with lock:
+                # Converte sets para listas para JSON
+                series_serializable = {}
+                for nome, serie_info in self.series.items():
+                    series_serializable[nome] = {
+                        'cartas': list(serie_info['cartas']),
+                        'descricao': serie_info.get('descricao', ''),
+                        'criada_em': serie_info.get('criada_em', datetime.now().isoformat())
+                    }
 
-            # Se annotation_manager fornecido, salva tudo junto
-            if annotation_manager:
-                data = {
-                    'anotacoes': annotation_manager.anotacoes,
-                    'caderno_pesquisa': annotation_manager.caderno_pesquisa,
-                    'series': series_serializable,
-                    'ultimo_update': datetime.now().isoformat()
-                }
-            else:
-                # Carrega data anterior e atualiza series
-                if os.path.exists(self.session_file):
-                    with open(self.session_file, 'r', encoding='utf-8') as f:
-                        data = json.load(f)
+                # Se annotation_manager fornecido, salva tudo junto
+                if annotation_manager:
+                    data = {
+                        'anotacoes': annotation_manager.anotacoes,
+                        'caderno_pesquisa': annotation_manager.caderno_pesquisa,
+                        'series': series_serializable,
+                        'ultimo_update': datetime.now().isoformat()
+                    }
                 else:
-                    data = {}
+                    # Carrega data anterior e atualiza series
+                    if os.path.exists(self.session_file):
+                        with open(self.session_file, 'r', encoding='utf-8') as f:
+                            data = json.load(f)
+                    else:
+                        data = {}
 
-                data['series'] = series_serializable
-                data['ultimo_update'] = datetime.now().isoformat()
+                    data['series'] = series_serializable
+                    data['ultimo_update'] = datetime.now().isoformat()
 
-            # Escrita atômica: grava em temp e renomeia — evita corrupção em crash
-            _tmp = self.session_file + '.tmp'
-            with open(_tmp, 'w', encoding='utf-8') as f:
-                json.dump(data, f, ensure_ascii=False, separators=(',', ':'))
-            os.replace(_tmp, self.session_file)
+                # Escrita atômica: grava em temp e renomeia — evita corrupção em crash
+                _tmp = self.session_file + '.tmp'
+                with open(_tmp, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, ensure_ascii=False, separators=(',', ':'))
+                os.replace(_tmp, self.session_file)
 
-            return True
+                return True
+        except Timeout:
+            return False
         except Exception:
             return False
 

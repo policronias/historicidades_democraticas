@@ -22,6 +22,9 @@ from .cache_manager import (
     initialize_search_cache,
     get_cached_search,
     cache_search_result,
+    get_search_engine_cache_key,
+    get_cached_engine_search,
+    cache_engine_search_result,
 )
 from .feedback_manager import FeedbackManager
 from .search_suggestions import SearchSuggestions
@@ -73,6 +76,9 @@ __all__ = [
     'initialize_search_cache',
     'get_cached_search',
     'cache_search_result',
+    'get_search_engine_cache_key',
+    'get_cached_engine_search',
+    'cache_engine_search_result',
     # Feedback
     'FeedbackManager',
     'SearchSuggestions',

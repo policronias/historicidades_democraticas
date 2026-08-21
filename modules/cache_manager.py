@@ -77,6 +77,53 @@ def cache_search_result(query_key: str, results):
             st.session_state.search_history = st.session_state.search_history[-20:]
 
 
+# ════════════════════════════════════════════════════════════
+# SEARCH ENGINE CACHE — Otimização Phase 1
+# Cache em session_state para search_simples e search_regex
+# ════════════════════════════════════════════════════════════
+
+def get_search_engine_cache_key(db_name: str, search_type: str, query: str, case_sensitive: bool = False) -> str:
+    """
+    Gera chave de cache para resultados de busca simples/regex.
+
+    Formato: "engine:{db_name}:{search_type}:{query}:{case_sensitive}"
+    Permite compartilhar cache entre sessões via st.cache_data se necessário.
+
+    Args:
+        db_name: Nome do banco de dados
+        search_type: Tipo de busca ('simples' ou 'regex')
+        query: Termo ou padrão de busca
+        case_sensitive: Se True, considera maiúsculas/minúsculas
+
+    Returns:
+        String com chave de cache
+    """
+    cs_str = "cs" if case_sensitive else "ci"
+    return f"engine:{db_name}:{search_type}:{query}:{cs_str}"
+
+
+def get_cached_engine_search(cache_key: str) -> Optional[Tuple[List[str], dict]]:
+    """Recupera resultado de busca de engine do cache de session_state"""
+    return st.session_state.search_cache.get(cache_key)
+
+
+def cache_engine_search_result(cache_key: str, results: Tuple[List[str], dict]):
+    """
+    Armazena resultado de busca de engine em cache de session_state.
+
+    Args:
+        cache_key: Chave gerada por get_search_engine_cache_key()
+        results: Tupla (ids_list, ocorrencias_dict) de search_simples ou search_regex
+    """
+    st.session_state.search_cache[cache_key] = results
+    # Manter cache limitado a 50 itens (para não crescer demais)
+    if len(st.session_state.search_cache) > 50:
+        # Remove itens antigos (FIFO simples)
+        keys_to_remove = list(st.session_state.search_cache.keys())[:-50]
+        for k in keys_to_remove:
+            del st.session_state.search_cache[k]
+
+
 def build_df_fast(card_ids: tuple, _todas_cartas: dict) -> pd.DataFrame:
     """
     Constrói DataFrame rápido a partir de IDs (sem cache por tamanho de dados).

@@ -696,50 +696,11 @@ ids_resultado = st.session_state.get('search_results', [])
 ocorrencias = st.session_state.get('_last_ocorrencias', {})
 
 if ids_resultado:
-    # ========== APLICAR QUICK FILTERS ==========
-    # Cache quick filters: evita recompute em cada rerun
-    ss = st.session_state.search_suggestions_manager
-    _qf_cache_key = (tuple(ids_resultado), tuple(sorted(st.session_state.quick_filters.items())))
-    if st.session_state.get('_qf_cache_key') != _qf_cache_key:
-        ids_filtrados = ss.filter_results_by_quick_filters(ids_resultado, _todas_cartas)
-        st.session_state._ids_filtrados_cached = ids_filtrados
-        st.session_state._qf_cache_key = _qf_cache_key
-    else:
-        ids_filtrados = st.session_state._ids_filtrados_cached
-
     # ========== MÉTRICAS ==========
-    col_a, col_b, col_c = st.columns(3)
+    col_a, col_b = st.columns(2)
     col_a.metric("Total encontrado", len(ids_resultado))
-    col_b.metric("Após filtros", len(ids_filtrados))
-    col_c.metric("Escopo", st.session_state.search_scope)
+    col_b.metric("Escopo", st.session_state.search_scope)
 
-    # ========== PAGINAÇÃO ==========
-    if len(ids_filtrados) > 1:
-        st.markdown("---")
-        col_pag1, col_pag2, col_pag3 = st.columns([1, 2, 1])
-
-        # OTIMIZAÇÃO: Calcular índice UMA VEZ (evita 3x list.index() O(n))
-        _current_idx = -1
-        if st.session_state.current_carta_id in ids_filtrados:
-            _current_idx = ids_filtrados.index(st.session_state.current_carta_id)
-
-        with col_pag1:
-            if st.button("⬅️ Anterior", use_container_width=True, key="search_btn_ant"):
-                if _current_idx > 0:
-                    st.session_state.current_carta_id = ids_filtrados[_current_idx - 1]
-                    st.rerun()
-
-        with col_pag2:
-            if _current_idx >= 0:
-                st.caption(f"📄 Carta {_current_idx + 1} de {len(ids_filtrados)}")
-            else:
-                st.caption(f"📄 {len(ids_filtrados)} resultados")
-
-        with col_pag3:
-            if st.button("Próximo ➡️", use_container_width=True, key="search_btn_prox"):
-                if _current_idx < len(ids_filtrados) - 1:
-                    st.session_state.current_carta_id = ids_filtrados[_current_idx + 1]
-                    st.rerun()
 
     # Mostrar variações quando usando "Variações" (calculado no momento da busca
     # e cacheado em session_state -- evita recarregar o índice de stems a cada rerun)
@@ -830,42 +791,6 @@ with st.expander("📜 Histórico de Buscas Recentes"):
     else:
         st.caption("Nenhuma busca anterior ainda")
 
-# ============================================================================
-# FILTROS RÁPIDOS
-# ============================================================================
-
-with st.expander("⚡ Filtros Rápidos"):
-    st.caption("Aplicar filtros aos resultados de busca:")
-
-    if "quick_filters" not in st.session_state:
-        st.session_state.quick_filters = {
-            "century_xx": False,
-            "only_with_data": False,
-            "only_with_location": False,
-        }
-
-    st.session_state.quick_filters["century_xx"] = st.checkbox(
-        "📅 Apenas século XX (1900-2000)",
-        value=st.session_state.quick_filters.get("century_xx", False),
-        key="filter_century_xx"
-    )
-
-    st.session_state.quick_filters["only_with_data"] = st.checkbox(
-        "📆 Apenas com data preenchida",
-        value=st.session_state.quick_filters.get("only_with_data", False),
-        key="filter_with_data"
-    )
-
-    st.session_state.quick_filters["only_with_location"] = st.checkbox(
-        "📍 Apenas com localização (município/UF)",
-        value=st.session_state.quick_filters.get("only_with_location", False),
-        key="filter_with_location"
-    )
-
-    if any(st.session_state.quick_filters.values()):
-        st.info(f"✅ {sum(st.session_state.quick_filters.values())} filtro(s) ativo(s)")
-
-st.markdown("---")
 
 # ============================================================================
 # ABAS PRINCIPAIS

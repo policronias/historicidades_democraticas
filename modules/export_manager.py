@@ -135,6 +135,117 @@ _FONT = dict(family='Segoe UI, Tahoma, Geneva, Verdana, sans-serif', size=13)
 _CHART_W = 560   # largura fixa; autosize=False garante que nunca é alterada
 
 
+# ---------------------------------------------------------------------------
+# Especificações centralizadas de gráficos (fonte única de verdade)
+# ---------------------------------------------------------------------------
+CHART_SPECS = [
+    {
+        'campo': 'sexo',
+        'titulo': 'Distribuição por Sexo',
+        'top_n': None,
+        'cor_plotly': 'Blues',
+        'cor_hex': '#3b82f6',
+        'tipo': 'bar_h',
+        'orientacao_html': 'h',
+        'orientacao_pdf': 'h',
+    },
+    {
+        'campo': 'uf',
+        'titulo': 'Cartas por Estado (Top 15)',
+        'top_n': 15,
+        'cor_plotly': 'Blues',
+        'cor_hex': '#1d4ed8',
+        'tipo': 'bar_h',
+        'orientacao_html': 'h',
+        'orientacao_pdf': 'h',
+    },
+    {
+        'campo': 'faixa_etaria',
+        'titulo': 'Distribuição por Faixa Etária',
+        'top_n': None,
+        'cor_plotly': 'Teal',
+        'cor_hex': '#0891b2',
+        'tipo': 'bar',
+        'orientacao_html': 'v',  # HTML: vertical
+        'orientacao_pdf': 'h',   # PDF: horizontal (por diferença de layout)
+    },
+    {
+        'campo': 'estado_civil',
+        'titulo': 'Estado Civil',
+        'top_n': None,
+        'cor_plotly': 'Teal',
+        'cor_hex': '#0891b2',
+        'tipo': 'bar_h',
+        'orientacao_html': 'h',
+        'orientacao_pdf': 'h',
+    },
+    {
+        'campo': 'instrucao',
+        'titulo': 'Escolaridade (Top 10)',
+        'top_n': 10,
+        'cor_plotly': 'Greens',
+        'cor_hex': '#059669',
+        'tipo': 'bar_h',
+        'orientacao_html': 'h',
+        'orientacao_pdf': 'h',
+    },
+    {
+        'campo': 'faixa_renda',
+        'titulo': 'Faixa de Renda (Top 10)',
+        'top_n': 10,
+        'cor_plotly': 'Oranges',
+        'cor_hex': '#d97706',
+        'tipo': 'bar_h',
+        'orientacao_html': 'h',
+        'orientacao_pdf': 'h',
+    },
+    {
+        'campo': 'atividade',
+        'titulo': 'Atividade / Ocupação (Top 15)',
+        'top_n': 15,
+        'cor_plotly': 'Purples',
+        'cor_hex': '#7c3aed',
+        'tipo': 'bar_h',
+        'orientacao_html': 'h',
+        'orientacao_pdf': 'h',
+    },
+    {
+        'campo': 'morador',
+        'titulo': 'Zona (Urbana / Rural)',
+        'top_n': None,
+        'cor_plotly': 'Greens',
+        'cor_hex': '#059669',
+        'tipo': 'bar_h',
+        'orientacao_html': 'h',
+        'orientacao_pdf': 'h',
+    },
+]
+
+# Gráficos exclusivos de HTML (não têm equivalente em PDF)
+CHART_SPECS_HTML_ONLY = [
+    {
+        'campo': 'origem',
+        'titulo': 'Cartas por Origem',
+        'top_n': 10,
+        'cor_plotly': 'Reds',
+        'cor_hex': '#dc2626',
+        'tipo': 'bar',
+        'orientacao_html': 'v',
+        'orientacao_pdf': None,
+    },
+    {
+        'campo': 'catalogo',
+        'titulo': 'Catálogos Mais Frequentes (Top 10)',
+        'top_n': 10,
+        'cor_plotly': 'Cividis',
+        'cor_hex': '#6366f1',
+        'tipo': 'bar_h',
+        'orientacao_html': 'h',
+        'orientacao_pdf': None,
+    },
+]
+
+
 def _gerar_graficos_html(cartas_dict: dict) -> str:
     """Gera HTML com gráficos Plotly embutidos para um conjunto de cartas."""
     if not PLOTLY_AVAILABLE or not cartas_dict:
@@ -210,96 +321,52 @@ def _gerar_graficos_html(cartas_dict: dict) -> str:
         )
         return _to_html(fig)
 
-    # 1. Sexo — barra horizontal
-    data = _contar_campo(cartas_dict, 'sexo')
-    if data:
-        labels, values = zip(*data)
-        fig = px.bar(x=list(values), y=list(labels), orientation='h',
-                     title="Distribuição por Sexo",
-                     color=list(values), color_continuous_scale='Blues')
-        charts.append(f'<div class="chart-box">{_hbar(fig, labels, values)}</div>')
+    # Renderiza gráficos baseado em CHART_SPECS (fonte única de verdade)
+    for spec in CHART_SPECS:
+        data = _contar_campo(cartas_dict, spec['campo'], top_n=spec['top_n'])
+        if not data:
+            continue
 
-    # 2. UF — barra horizontal top 15
-    data = _contar_campo(cartas_dict, 'uf', top_n=15)
-    if data:
         labels, values = zip(*data)
-        fig = px.bar(x=list(values), y=list(labels), orientation='h',
-                     title="Cartas por Estado (Top 15)",
-                     color=list(values), color_continuous_scale='Blues')
-        charts.append(f'<div class="chart-box">{_hbar(fig, labels, values)}</div>')
+        orientacao = spec['orientacao_html']
 
-    # 3. Faixa Etária — barra vertical
-    data = _contar_campo(cartas_dict, 'faixa_etaria')
-    if data:
-        data_sorted = sorted(data, key=lambda x: x[0])
-        labels, values = zip(*data_sorted)
-        fig = px.bar(x=list(labels), y=list(values), title="Distribuição por Faixa Etária",
-                     color=list(values), color_continuous_scale='Teal')
-        fig.update_xaxes(tickangle=-40)
-        charts.append(f'<div class="chart-box">{_vbar(fig, labels, values)}</div>')
+        # Para gráficos com dados ordenáveis (faixa_etaria), ordenar
+        if spec['campo'] == 'faixa_etaria':
+            data_sorted = sorted(data, key=lambda x: x[0])
+            labels, values = zip(*data_sorted)
 
-    # 4. Estado Civil — barra horizontal
-    data = _contar_campo(cartas_dict, 'estado_civil')
-    if data:
+        if orientacao == 'h':
+            fig = px.bar(x=list(values), y=list(labels), orientation='h',
+                         title=spec['titulo'],
+                         color=list(values), color_continuous_scale=spec['cor_plotly'])
+            charts.append(f'<div class="chart-box">{_hbar(fig, labels, values)}</div>')
+        else:  # vertical
+            fig = px.bar(x=list(labels), y=list(values),
+                         title=spec['titulo'],
+                         color=list(values), color_continuous_scale=spec['cor_plotly'])
+            fig.update_xaxes(tickangle=-40)
+            charts.append(f'<div class="chart-box">{_vbar(fig, labels, values)}</div>')
+
+    # Gráficos exclusivos de HTML (origem, catálogo)
+    for spec in CHART_SPECS_HTML_ONLY:
+        data = _contar_campo(cartas_dict, spec['campo'], top_n=spec['top_n'])
+        if not data:
+            continue
+
         labels, values = zip(*data)
-        fig = px.bar(x=list(values), y=list(labels), orientation='h',
-                     title="Estado Civil",
-                     color=list(values), color_continuous_scale='Teal')
-        charts.append(f'<div class="chart-box">{_hbar(fig, labels, values)}</div>')
+        orientacao = spec['orientacao_html']
 
-    # 5. Instrução — barra horizontal
-    data = _contar_campo(cartas_dict, 'instrucao', top_n=10)
-    if data:
-        labels, values = zip(*data)
-        fig = px.bar(x=list(values), y=list(labels), orientation='h',
-                     title="Escolaridade",
-                     color=list(values), color_continuous_scale='Greens')
-        charts.append(f'<div class="chart-box">{_hbar(fig, labels, values)}</div>')
-
-    # 6. Faixa de Renda — barra horizontal
-    data = _contar_campo(cartas_dict, 'faixa_renda', top_n=10)
-    if data:
-        labels, values = zip(*data)
-        fig = px.bar(x=list(values), y=list(labels), orientation='h',
-                     title="Faixa de Renda",
-                     color=list(values), color_continuous_scale='Oranges')
-        charts.append(f'<div class="chart-box">{_hbar(fig, labels, values)}</div>')
-
-    # 7. Atividade/Ocupação — barra horizontal top 15
-    data = _contar_campo(cartas_dict, 'atividade', top_n=15)
-    if data:
-        labels, values = zip(*data)
-        fig = px.bar(x=list(values), y=list(labels), orientation='h',
-                     title="Atividade / Ocupação (Top 15)",
-                     color=list(values), color_continuous_scale='Purples')
-        charts.append(f'<div class="chart-box">{_hbar(fig, labels, values)}</div>')
-
-    # 8. Zona Urbana/Rural — barra horizontal
-    data = _contar_campo(cartas_dict, 'morador')
-    if data:
-        labels, values = zip(*data)
-        fig = px.bar(x=list(values), y=list(labels), orientation='h',
-                     title="Zona (Urbana / Rural)",
-                     color=list(values), color_continuous_scale='Greens')
-        charts.append(f'<div class="chart-box">{_hbar(fig, labels, values)}</div>')
-
-    # 9. Origem — barra vertical top 10
-    data = _contar_campo(cartas_dict, 'origem', top_n=10)
-    if data:
-        labels, values = zip(*data)
-        fig = px.bar(x=list(labels), y=list(values), title="Cartas por Origem",
-                     color=list(values), color_continuous_scale='Reds')
-        fig.update_xaxes(tickangle=-40)
-        charts.append(f'<div class="chart-box">{_vbar(fig, labels, values)}</div>')
-
-    # 10. Catálogos — barra horizontal top 10
-    data = _contar_campo(cartas_dict, 'catalogo', top_n=10)
-    if data:
-        labels, values = zip(*data)
-        fig = px.bar(x=list(values), y=list(labels), orientation='h',
-                     title="Catálogos Mais Frequentes (Top 10)",
-                     color=list(values), color_continuous_scale='Cividis')
-        charts.append(f'<div class="chart-box">{_hbar(fig, labels, values)}</div>')
+        if orientacao == 'h':
+            fig = px.bar(x=list(values), y=list(labels), orientation='h',
+                         title=spec['titulo'],
+                         color=list(values), color_continuous_scale=spec['cor_plotly'])
+            charts.append(f'<div class="chart-box">{_hbar(fig, labels, values)}</div>')
+        else:  # vertical
+            fig = px.bar(x=list(labels), y=list(values),
+                         title=spec['titulo'],
+                         color=list(values), color_continuous_scale=spec['cor_plotly'])
+            fig.update_xaxes(tickangle=-40)
+            charts.append(f'<div class="chart-box">{_vbar(fig, labels, values)}</div>')
 
     if not charts:
         return "<p><em>Dados insuficientes para gerar gráficos com os campos disponíveis.</em></p>"
@@ -353,24 +420,15 @@ def _gerar_graficos_pdf(cartas_dict: dict) -> list:
         buf.seek(0)
         return RLImage(buf, width=CHART_W_CM * RL_CM, height=h_in * 2.54 * RL_CM)
 
-    specs = [
-        ('sexo',        'Distribuição por Sexo',           '#3b82f6', None),
-        ('uf',          'Cartas por Estado (Top 10)',       '#1d4ed8', 10),
-        ('faixa_etaria','Faixa Etária',                    '#0891b2', None),
-        ('estado_civil','Estado Civil',                    '#0891b2', None),
-        ('instrucao',   'Escolaridade (Top 10)',            '#059669', 10),
-        ('faixa_renda', 'Faixa de Renda (Top 10)',          '#d97706', 10),
-        ('atividade',   'Atividade / Ocupação (Top 10)',    '#7c3aed', 10),
-        ('morador',     'Zona (Urbana / Rural)',            '#059669', None),
-    ]
-
     images = []
-    for campo, titulo, color, top_n in specs:
-        data = _contar_campo(cartas_dict, campo, top_n=top_n)
+    # Renderiza gráficos baseado em CHART_SPECS (fonte única de verdade)
+    # PDF só renderiza os gráficos comuns (não os exclusivos de HTML)
+    for spec in CHART_SPECS:
+        data = _contar_campo(cartas_dict, spec['campo'], top_n=spec['top_n'])
         if not data:
             continue
         try:
-            images.append(_make_hbar(data, titulo, color))
+            images.append(_make_hbar(data, spec['titulo'], spec['cor_hex']))
         except Exception:
             continue
 

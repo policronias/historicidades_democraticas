@@ -234,9 +234,11 @@ def compute_histogram_cached(scores_tuple: tuple):
 
 with st.sidebar:
     # Header com Home button
-    col_header, col_home = st.columns([3, 1])
+    col_icon, col_header, col_home = st.columns([0.8, 2.2, 1])
+    with col_icon:
+        st.image("assets/icon_historicidades.png", width=50, use_container_width=False)
     with col_header:
-        st.markdown("<h1 style='color: #8b6f47; margin-bottom: 0;'>📚 Historicidades Democráticas</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 style='color: #8b6f47; margin-bottom: 0; margin-top: 0;'>Historicidades Democráticas</h1>", unsafe_allow_html=True)
         st.markdown("<sub style='color: var(--text-secondary); font-size: 18px;'>Por Walderez Ramalho</sub>", unsafe_allow_html=True)
     with col_home:
         if st.button("🏠", key="home_button", help="Voltar ao início"):

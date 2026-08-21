@@ -48,6 +48,7 @@ from modules.ui_manager import (
     apply_plotly_theme,
     format_pie_labels,
 )
+from modules.memory_monitor import display_memory_monitor
 
 
 # ============================================================================
@@ -62,6 +63,10 @@ st.set_page_config(
 )
 
 configure_page_style()
+
+# Debug mode: Ativar via URL ?debug=true
+_debug_mode = st.query_params.get('debug') == 'true'
+display_memory_monitor(_debug_mode)
 
 
 # ============================================================================

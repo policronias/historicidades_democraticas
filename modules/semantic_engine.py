@@ -11,6 +11,11 @@ Fluxo de uso:
 
 O modelo RoBERTa produz vetores de 768 dimensões com janela de 512 tokens,
 cobrindo 99% das cartas da base SAIC sem truncagem silenciosa.
+
+Otimização (Opção A):
+    - Embeddings são cacheados em memória via st.cache_resource,
+      compartilhados entre sessões simultâneas no Streamlit Cloud.
+    - Isso evita carregar 224MB de embeddings por sessão de usuário.
 """
 
 import re
@@ -258,12 +263,10 @@ class SemanticEngine:
         ou estiver desatualizado, lança FileNotFoundError com orientação clara.
         A computação deve ser iniciada exclusivamente pelo botão na interface.
 
-        A matriz e os ids da última leitura bem-sucedida ficam guardados em
-        memória (self._cached_*) e são reaproveitados em chamadas seguintes
-        para o mesmo cache_path com os mesmos IDs de base, evitando reler e
-        descomprimir o .npz (~200 MB) a cada busca. Se a base for trocada ou
-        o cache for reindexado com um conjunto de IDs diferente, a leitura do
-        disco volta a acontecer normalmente.
+        Otimização (Opção A): Tenta usar st.cache_resource para compartilhar
+        embeddings entre sessões simultâneas no Streamlit Cloud, evitando
+        carregar 224MB por sessão. Fallback para cache em memória da instância
+        se fora de contexto Streamlit.
 
         Args:
             cartas:  Dicionário {id: dados} com as cartas atuais (para validação).
@@ -290,6 +293,28 @@ class SemanticEngine:
         ):
             return self._cached_embeddings, self._cached_ids
 
+        # Opção A: Tentar usar st.cache_resource para compartilhar entre sessões
+        try:
+            import streamlit as st
+            # Importar função de cache (evita import circular)
+            from modules.semantic_engine_cache import get_embeddings_cached
+            embeddings, ids = get_embeddings_cached(db_name, self.cache_dir)
+            # Validar que os IDs batem com a base atual
+            if set(ids) != set(carta_ids):
+                raise FileNotFoundError(
+                    f"Cache desatualizado para '{db_name}' "
+                    "(a base foi alterada desde a última indexação). "
+                    "Use o botão '⚡ Pré-computar Embeddings' para reindexar."
+                )
+            self._cached_embeddings = embeddings
+            self._cached_ids = ids
+            self._cached_cache_path = cache_path
+            return embeddings, ids
+        except (ImportError, RuntimeError, ModuleNotFoundError):
+            # Fora de contexto Streamlit ou import falhou: usar cache local
+            pass
+
+        # Fallback: carregamento local (sem compartilhamento entre sessões)
         if not cache_path.exists():
             raise FileNotFoundError(
                 f"Cache não encontrado para '{db_name}'. "

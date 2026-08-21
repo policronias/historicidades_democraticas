@@ -633,7 +633,7 @@ if form_submit and termo_busca:
             _engine_cache_key = get_search_engine_cache_key(
                 dm.current_database_name,
                 'advanced',
-                f"{termo_busca}:{use_variations}:{case_sensitive}:{','.join(sorted(search_fields))}"
+                f"{termo_busca}:{_use_variations}:{case_sensitive}:{','.join(sorted(search_fields))}"
             )
             _cached_engine_result = get_cached_engine_search(_engine_cache_key)
 

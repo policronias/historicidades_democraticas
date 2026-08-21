@@ -10,7 +10,7 @@
 
 Cada "carta" é um registro com texto livre (`texto`) e metadados sociodemográficos e catalográficos: `linha`, `nome`, `destinatario`, `catalogo`, `indexacao`, `origem`, `data`, `data2`, `formul`, `dv`, `municipio`, `uf`, `cep`, `sexo`, `morador`, `instrucao`, `estado_civil`, `faixa_etaria`, `faixa_renda`, `atividade`, além de `anotacoes` (nota do pesquisador) e `series` (vínculo a séries temáticas).
 
-A base principal (`cartas_db.json`) tem **~103 MB** e é carregada inteiramente em memória — não há banco de dados relacional nem paginação em disco. A fonte bruta é uma planilha (`sugestoes_constituintes_72k.xlsx`, ~29 MB), convertida para JSON por `converter_base.py` (script standalone) ou pelo conversor embutido na interface.
+A base principal (`cartas_db.json`) tem **~103 MB** e é carregada inteiramente em memória — não há banco de dados relacional nem paginação em disco. A fonte bruta é uma planilha (`sugestoes_constituintes_72k.xlsx`, ~29 MB), convertida para JSON pelo conversor embutido na interface (aba ⚙️ Configurações).
 
 ## 2. Arquitetura geral
 
@@ -34,7 +34,6 @@ cache/embeddings_*.npz         # Cache de embeddings por base de dados
 scripts/
   consolidar_buscas.py   (321) # Script auxiliar — consolidação de múltiplos CSVs de busca
   precompute_embeddings.py (197) # Script CLI para pré-computar embeddings (evita timeout do Streamlit Cloud)
-converter_base.py                # RESQUÍCIO: Script standalone XLSX/CSV → JSON (lógica duplicada no sidebar; candidato a deletar)
 ```
 
 **Observação arquitetural**: `app.py` é uma aplicação Streamlit de execução única (script top-to-bottom, reexecutado a cada interação), sem funções `main()` nem roteamento — os 9 blocos `with tabX:` são simplesmente seções sequenciais do mesmo script. Esse é o modelo de execução padrão do Streamlit. 
@@ -141,7 +140,7 @@ A busca semântica paginada (aba 8) tem uma armadilha de UX documentada no CLAUD
 - Suporta múltiplas bases JSON simultâneas (`loaded_databases: Dict[filename, dict]`), com troca via sidebar.
 - **Cache de módulo em nível de processo** (`_PARSED_DB_CACHE`, fora da classe) indexado por `(caminho_absoluto, mtime)` — evita reparsear um JSON de 100+ MB a cada rerun do Streamlit ou nova sessão do navegador, desde que o arquivo não tenha mudado em disco. Isso é uma otimização crítica dado que Streamlit reexecuta o script inteiro a cada interação.
 - Detecção automática de formato: se o JSON tiver `{"cartas": [...]}` (formato de resultado de busca exportado), normaliza para `{id: {...}}` na carga — permite recarregar um export como uma "base" de trabalho.
-- Conversor XLSX/CSV → JSON duplicado em dois lugares: script standalone `converter_base.py` e formulário inline na sidebar de `app.py` (mesma lógica de mapeamento de colunas, mantida em paralelo).
+- Conversor XLSX/CSV → JSON implementado no formulário da aba ⚙️ Configurações (lines 333-451 em `app.py`).
 
 ## 12. Cache e performance
 
@@ -172,8 +171,7 @@ Levantamento neutro de pontos que um plano de evolução técnica provavelmente 
 ### Remanescentes
 1. **Config morta**: `EMBEDDING_MODEL` (MiniLM) em `config_manager.py` não corresponde ao modelo real usado (mpnet, hardcoded no default de `SemanticEngine`). Também `PROJECT_DIR`/`DATA_DIR`/`BASES_DIR` não parecem ser usados por `DataManager` (que usa `data_dir="."` por padrão).
 2. **Ausência de versionamento**: projeto não é um repositório git — qualquer refatoração maior hoje não tem rede de segurança de histórico/rollback.
-3. **Script resquício**: `converter_base.py` é um script standalone XLSX/CSV → JSON com lógica duplicada no sidebar. Candidato a deletar (funcionalidade 100% disponível na UI em Configurações).
-4. **Escala e memória**: base inteira (72.719 cartas, ~103 MB de JSON) carregada em memória do processo Streamlit a cada sessão; embeddings adicionam outra matriz (72.719 × 768 float32 ≈ 224 MB) quando carregados. Em ambientes com recursos limitados (Streamlit Cloud free tier) isso é um teto de escala real caso a base cresça.
+3. **Escala e memória**: base inteira (72.719 cartas, ~103 MB de JSON) carregada em memória do processo Streamlit a cada sessão; embeddings adicionam outra matriz (72.719 × 768 float32 ≈ 224 MB) quando carregados. Em ambientes com recursos limitados (Streamlit Cloud free tier) isso é um teto de escala real caso a base cresça.
 5. **Persistência single-file, single-user**: `sessions/current_session.json` não tem locking; múltiplos usuários simultâneos no deploy público podem sobrescrever anotações/séries uns dos outros silenciosamente.
 6. **PDF vs HTML — dois pipelines de gráfico**: qualquer novo tipo de gráfico exige implementação separada em matplotlib (PDF) e Plotly (HTML), dobrando o custo de manutenção de visualizações.
 7. **Sem testes automatizados**: qualquer refatoração dos módulos de busca/semântica/exportação depende de verificação manual via UI.

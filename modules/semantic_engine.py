@@ -19,6 +19,8 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
+from modules.config_manager import EMBEDDING_MODEL
+
 
 class SemanticEngine:
     """
@@ -29,12 +31,13 @@ class SemanticEngine:
     entre sessões, evitando recalcular ~70 mil vetores a cada inicialização.
     """
 
-    def __init__(self, model_name: str = 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2', cache_dir: str = 'cache'):
+    def __init__(self, model_name: str = EMBEDDING_MODEL, cache_dir: str = 'cache'):
         """
         Configura o motor semântico sem carregar o modelo.
 
         Args:
-            model_name: Nome do modelo SentenceTransformer. Padrão: 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2' (RoBERTa).
+            model_name: Nome do modelo SentenceTransformer. Padrão: valor de config_manager.EMBEDDING_MODEL
+                        (paraphrase-multilingual-mpnet-base-v2 — RoBERTa).
                         O download (~420 MB) ocorre automaticamente na primeira
                         chamada a load_model().
             cache_dir:  Diretório onde os arquivos .npz de cache serão salvos.

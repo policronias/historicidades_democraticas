@@ -65,15 +65,17 @@ class SearchEngine:
 
             if not case_sensitive:
                 texto = texto.lower()
+                nome = nome.lower()
                 termo_lower = termo.lower()
             else:
                 termo_lower = termo
 
             # Contagem com normalização de acentos
             texto_norm = SearchEngine._strip_accents(texto)
+            nome_norm = SearchEngine._strip_accents(nome)
             termo_norm = SearchEngine._strip_accents(termo_lower)
             ocorrencias = texto_norm.count(termo_norm)
-            ocorrencias += SearchEngine._strip_accents(nome).count(termo_norm)
+            ocorrencias += nome_norm.count(termo_norm)
 
             if ocorrencias > 0:
                 resultados[carta_id] = ocorrencias

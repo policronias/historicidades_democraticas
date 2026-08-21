@@ -56,7 +56,7 @@ from modules.ui_manager import (
 
 st.set_page_config(
     page_title="Historicidades Democráticas",
-    page_icon="📚",
+    page_icon="assets/icon_historicidades.png",
     layout="wide",
     initial_sidebar_state="expanded"
 )

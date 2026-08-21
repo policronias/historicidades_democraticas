@@ -656,9 +656,9 @@ if form_submit and termo_busca:
                     cache_engine_search_result(_engine_cache_key, (ids_resultado, ocorrencias))
                     # Também guardar na forma antiga para compatibilidade
                     cache_search_result(_query_key, {'ids': ids_resultado, 'ocorrencias': ocorrencias})
-            except RuntimeError as _e:
-                st.error(f"❌ {_e}")
-                ids_resultado, ocorrencias = [], {}
+                except RuntimeError as _e:
+                    st.error(f"❌ {_e}")
+                    ids_resultado, ocorrencias = [], {}
 
         if '*' in termo_busca:
             wildcart_pattern = termo_busca.replace("*", r"\w*")

@@ -64,9 +64,10 @@ st.set_page_config(
 
 configure_page_style()
 
-# Debug mode: Ativar via URL ?debug=true
-_debug_mode = st.query_params.get('debug') == 'true'
-display_memory_monitor(_debug_mode)
+# Debug mode: Ativar via URL ?debug=memory para ver consumo de memória no sidebar
+# Uso: adicionar "?debug=memory" à URL do app
+_debug_memory = st.query_params.get('debug') == 'memory'
+display_memory_monitor(_debug_memory)
 
 
 # ============================================================================

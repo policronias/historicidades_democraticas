@@ -1,47 +1,71 @@
-# Ambiente virtual Python
-.venv/
-venv/
-env/
-
-# Cache de embeddings semânticos e índice de stems (arquivos grandes, gerados localmente)
-cache/*.npz
-cache/*.pkl
-
-# Base de dados principal (grande demais para git, gerada/importada localmente)
-cartas_db.json
-sugestoes_constituintes_72k.xlsx
-
-# Credenciais de acesso (NUNCA versionar)
-Acesso online.txt
-
-# Sessão do Streamlit (gerada automaticamente, cresce e muda constantemente)
-sessions/current_session.json
-
-# Backups locais de sessão
-backups/
-
-# Python
+﻿# Python
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
+*$py.class
+*.so
 .Python
-*.egg-info/
-dist/
+env/
+venv/
+ENV/
+.venv/
 build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
 *.egg
+MANIFEST
 
-# IDEs e editores
+# Streamlit
+.streamlit/
+.streamlit/secrets.toml
+.streamlit/config.toml
+
+# Cache & Session files
+cache/
+sessions/current_session.json
+backups/
+
+# Data files (large, not to be committed)
+cartas_db.json
+*.xlsx
+*.xls
+
+# IDE & OS
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-
-# Sistema operacional
 .DS_Store
 Thumbs.db
-desktop.ini
 
-# Logs
+# IDE extensions
+.vscode_extensions/
+
+# Claude Code
+.agents/
+.claude/
+.claude/settings.local.json
+
+# Temporary files
+*.tmp
 *.log
+.temp/
+tmp/
+
+# Credentials & sensitive files
+Acesso online.txt
+secrets.txt
+.env.local

@@ -7,7 +7,7 @@ import streamlit as st
 import csv
 from io import StringIO
 import pandas as pd
-from typing import Optional
+from typing import Optional, Union, List, Tuple
 
 
 # ════════════════════════════════════════════════════════════
@@ -50,8 +50,8 @@ def initialize_search_cache():
         st.session_state.search_history = []
 
 
-def get_cached_search(query_key: str) -> Optional[dict]:
-    """Recupera resultado de busca do cache"""
+def get_cached_search(query_key: str) -> Optional[Union[dict, List[Tuple[str, float]]]]:
+    """Recupera resultado de busca do cache (dict para busca avançada, list para semântica)"""
     return st.session_state.search_cache.get(query_key)
 
 

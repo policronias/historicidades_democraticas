@@ -873,6 +873,7 @@ with tab1:
                     if idx > 0:
                         st.session_state.current_carta_id = nav_ids[idx - 1]
                         st.session_state.sidebar_series_context = 'explorar'
+                        st.rerun()
                 except ValueError:
                     pass
         st.button("⬅️ Anterior", use_container_width=True, key="explorar_btn_anterior",
@@ -886,6 +887,7 @@ with tab1:
                     if idx < len(nav_ids) - 1:
                         st.session_state.current_carta_id = nav_ids[idx + 1]
                         st.session_state.sidebar_series_context = 'explorar'
+                        st.rerun()
                 except ValueError:
                     pass
         st.button("Próximo ➡️", use_container_width=True, key="explorar_btn_proximo",
@@ -2521,6 +2523,7 @@ with tab7:
                             st.session_state.current_carta_id = _new
                             st.session_state.sidebar_series_carta_id = _new
                             st.session_state.sidebar_series_context = 'filtro'
+                            st.rerun()
                     except ValueError:
                         pass
                 st.button("⬅️ Anterior", use_container_width=True, key="filter_btn_anterior",
@@ -2537,6 +2540,7 @@ with tab7:
                             st.session_state.current_carta_id = _new
                             st.session_state.sidebar_series_carta_id = _new
                             st.session_state.sidebar_series_context = 'filtro'
+                            st.rerun()
                     except ValueError:
                         pass
                 st.button("Próximo ➡️", use_container_width=True, key="filter_btn_proximo",

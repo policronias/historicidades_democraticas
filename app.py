@@ -1223,7 +1223,7 @@ with tab3:
                 "Selecione as séries para esta carta:",
                 options=_todas_series,
                 default=series_da_carta,
-                key="serie_multiselect"
+                key=f"serie_multiselect_{st.session_state.current_carta_id}"
             )
 
             # Atualizar associações — uma única chamada + um único save_session()

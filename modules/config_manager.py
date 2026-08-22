@@ -3,29 +3,6 @@ Config Manager - Gerencia configurações da aplicação
 Centraliza constantes, caminhos e parâmetros de configuração.
 """
 
-import os
-from pathlib import Path
-from typing import Dict, List
-
-# ============================================================================
-# PATHS E CONFIGURAÇÕES DE DADOS
-# ============================================================================
-
-# Diretório base do projeto
-PROJECT_DIR = Path(__file__).parent.parent
-
-# Caminhos de dados
-DATA_DIR = PROJECT_DIR / 'dados'
-DATABASE_PATH = PROJECT_DIR / 'cartas_db.json'
-EMBEDDINGS_PATH = PROJECT_DIR / 'cache' / 'embeddings_cartas_db.npz'
-ANNOTATIONS_PATH = PROJECT_DIR / 'anotacoes.json'
-SERIES_PATH = PROJECT_DIR / 'series_tematicas.json'
-
-# Caminhos de bases auxiliares
-BASES_DIR = PROJECT_DIR / 'bases'
-DATASETS_DIR = BASES_DIR / 'Datasets'
-EXPORTS_DIR = PROJECT_DIR / 'exports'
-
 # ============================================================================
 # CONFIGURAÇÕES DE APLICAÇÃO
 # ============================================================================
@@ -108,54 +85,3 @@ MESSAGES = {
     'error': '⚠️ Ocorreu um erro. Por favor, tente novamente.',
 }
 
-# ============================================================================
-# HELPER FUNCTIONS
-# ============================================================================
-
-def ensure_paths_exist():
-    """
-    Cria os diretórios necessários se não existirem.
-    Deve ser chamado na inicialização da aplicação.
-    """
-    dirs_to_create = [DATA_DIR, BASES_DIR, DATASETS_DIR, EXPORTS_DIR, PROJECT_DIR / 'cache']
-    for dir_path in dirs_to_create:
-        dir_path.mkdir(parents=True, exist_ok=True)
-
-
-def get_path(path_key: str) -> Path:
-    """
-    Retorna o caminho para um recurso específico.
-    
-    Args:
-        path_key: Chave do caminho ('database', 'embeddings', 'annotations', etc.)
-    
-    Returns:
-        Objeto Path do caminho solicitado
-    """
-    paths = {
-        'database': DATABASE_PATH,
-        'embeddings': EMBEDDINGS_PATH,
-        'annotations': ANNOTATIONS_PATH,
-        'series': SERIES_PATH,
-        'bases': BASES_DIR,
-        'exports': EXPORTS_DIR,
-        'data': DATA_DIR,
-    }
-    return paths.get(path_key, None)
-
-
-def get_field_groups() -> Dict[str, List[str]]:
-    """
-    Retorna campos agrupados por categoria para apresentação na UI.
-    
-    Returns:
-        Dicionário com grupos de campos
-    """
-    return {
-        'Identificação': ['linha', 'nome', 'destinatario', 'data'],
-        'Localização': ['municipio', 'uf', 'cep'],
-        'Catalogação': ['catalogo', 'indexacao', 'origem'],
-        'Características': ['sexo', 'faixa_etaria', 'instrucao', 'estado_civil'],
-        'Sociodemografia': ['morador', 'faixa_renda', 'atividade'],
-        'Metadados': ['formul', 'dv', 'data2', 'anotacoes', 'series'],
-    }

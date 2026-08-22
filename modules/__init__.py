@@ -41,18 +41,11 @@ from .ui_manager import (
     format_pie_labels,
 )
 from .config_manager import (
-    ensure_paths_exist,
-    get_path,
-    get_field_groups,
     PAGE_CONFIG,
     METADATA_FIELDS,
     ANALYSIS_FIELDS,
     COLORS,
     MESSAGES,
-    PROJECT_DIR,
-    DATABASE_PATH,
-    EMBEDDINGS_PATH,
-    EXPORTS_DIR,
 )
 
 __all__ = [
@@ -94,16 +87,9 @@ __all__ = [
     'apply_plotly_theme',
     'format_pie_labels',
     # Config
-    'ensure_paths_exist',
-    'get_path',
-    'get_field_groups',
     'PAGE_CONFIG',
     'METADATA_FIELDS',
     'ANALYSIS_FIELDS',
     'COLORS',
     'MESSAGES',
-    'PROJECT_DIR',
-    'DATABASE_PATH',
-    'EMBEDDINGS_PATH',
-    'EXPORTS_DIR',
 ]

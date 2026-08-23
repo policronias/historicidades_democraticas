@@ -1,11 +1,12 @@
 """
-Cache wrapper para embeddings em st.cache_resource.
+Cache wrapper para embeddings e modelo em st.cache_resource.
 
-Função cacheada que carrega embeddings do disco e os mantém em memória
-compartilhada entre sessões no Streamlit Cloud (Opção A da otimização de memória).
+Funções cacheadas que carregam embeddings e o modelo RoBERTa e os mantêm em
+memória compartilhada entre sessões no Streamlit Cloud (Opção A da
+otimização de memória).
 
-A chave do cache inclui o nome da base de dados para evitar retornar
-embeddings da base errada quando o usuário alterna entre bases.
+A chave do cache de embeddings inclui o nome da base de dados para evitar
+retornar embeddings da base errada quando o usuário alterna entre bases.
 """
 
 import streamlit as st
@@ -54,3 +55,21 @@ def get_embeddings_cached(
     embeddings = dados['embeddings']  # shape (n, 768), float32
     ids = dados['ids'].tolist()        # list[str]
     return embeddings, ids
+
+
+@st.cache_resource(show_spinner=False)
+def get_model_cached(model_name: str):
+    """
+    Carrega o modelo SentenceTransformer com cache compartilhado entre sessões.
+
+    Evita que cada sessão do Streamlit Cloud recarregue sua própria cópia
+    do modelo RoBERTa (~420 MB) a cada busca semântica.
+
+    Args:
+        model_name: Nome do modelo SentenceTransformer.
+
+    Returns:
+        Instância de SentenceTransformer pronta para codificação.
+    """
+    from sentence_transformers import SentenceTransformer
+    return SentenceTransformer(model_name)

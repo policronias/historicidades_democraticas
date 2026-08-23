@@ -13,9 +13,11 @@ O modelo RoBERTa produz vetores de 768 dimensões com janela de 512 tokens,
 cobrindo 99% das cartas da base SAIC sem truncagem silenciosa.
 
 Otimização (Opção A):
-    - Embeddings são cacheados em memória via st.cache_resource,
-      compartilhados entre sessões simultâneas no Streamlit Cloud.
-    - Isso evita carregar 224MB de embeddings por sessão de usuário.
+    - Embeddings e o modelo RoBERTa são cacheados em memória via
+      st.cache_resource, compartilhados entre sessões simultâneas no
+      Streamlit Cloud.
+    - Isso evita carregar 224MB de embeddings + ~420MB de modelo por
+      sessão de usuário.
 """
 
 import re
@@ -152,12 +154,24 @@ class SemanticEngine:
         O download do RoBERTa (~420 MB) ocorre automaticamente via Hugging Face
         Hub e é armazenado em ~/.cache/huggingface/ no sistema local.
 
+        Otimização (Opção A): Tenta usar st.cache_resource para compartilhar
+        o modelo entre sessões simultâneas no Streamlit Cloud, evitando
+        carregar ~420MB por sessão. Fallback para instância local se fora
+        de contexto Streamlit.
+
         Returns:
             Instância de SentenceTransformer pronta para codificação.
         """
         if self._model is None:
-            from sentence_transformers import SentenceTransformer
-            self._model = SentenceTransformer(self.model_name)
+            try:
+                import streamlit as st
+                # Importar função de cache (evita import circular)
+                from modules.semantic_engine_cache import get_model_cached
+                self._model = get_model_cached(self.model_name)
+            except (ImportError, RuntimeError, ModuleNotFoundError):
+                # Fora de contexto Streamlit ou import falhou: carregar localmente
+                from sentence_transformers import SentenceTransformer
+                self._model = SentenceTransformer(self.model_name)
         return self._model
 
     # ------------------------------------------------------------------ #

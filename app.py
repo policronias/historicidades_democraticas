@@ -125,32 +125,15 @@ def initialize_session():
         ids = st.session_state.data_manager.get_ids_cartas()
         st.session_state.current_carta_id = ids[0] if ids else None
 
-    if 'search_results' not in st.session_state:
-        st.session_state.search_results = []
-
-    if 'highlighted_terms' not in st.session_state:
-        st.session_state.highlighted_terms = []
-
-    if 'edit_mode_serie' not in st.session_state:
-        st.session_state.edit_mode_serie = {}
-
-    if 'search_scope' not in st.session_state:
-        st.session_state.search_scope = "Somente Texto"
-
-    if 'highlight_active' not in st.session_state:
-        st.session_state.highlight_active = True
-
-    if 'wildcard_matches' not in st.session_state:
-        st.session_state.wildcard_matches = {}
-
-    if 'highlight_use_regex' not in st.session_state:
-        st.session_state.highlight_use_regex = False
-
-    if 'filter_results' not in st.session_state:
-        st.session_state.filter_results = []
-
-    if 'active_filters' not in st.session_state:
-        st.session_state.active_filters = {}
+    st.session_state.setdefault('search_results', [])
+    st.session_state.setdefault('highlighted_terms', [])
+    st.session_state.setdefault('edit_mode_serie', {})
+    st.session_state.setdefault('search_scope', "Somente Texto")
+    st.session_state.setdefault('highlight_active', True)
+    st.session_state.setdefault('wildcard_matches', {})
+    st.session_state.setdefault('highlight_use_regex', False)
+    st.session_state.setdefault('filter_results', [])
+    st.session_state.setdefault('active_filters', {})
 
     if 'semantic_engine' not in st.session_state:
         st.session_state.semantic_engine = SemanticEngine(model_name=EMBEDDING_MODEL)
@@ -158,33 +141,16 @@ def initialize_session():
     if 'stemming_engine' not in st.session_state:
         st.session_state.stemming_engine = StemmingEngine()
 
-    if 'highlight_use_stemming' not in st.session_state:
-        st.session_state.highlight_use_stemming = False
-
-    if 'semantic_results' not in st.session_state:
-        st.session_state.semantic_results = []
-
-    if 'semantic_page' not in st.session_state:
-        st.session_state.semantic_page = 1
-
-    if 'cached_series_list' not in st.session_state:
-        st.session_state.cached_series_list = None
-        st.session_state.cached_series_list_valid = False
-
-    if 'semantic_expand_state' not in st.session_state:
-        st.session_state.semantic_expand_state = {}  # Lazy-load state para expanders
-
-    if 'sem_carta_gerenciar' not in st.session_state:
-        st.session_state.sem_carta_gerenciar = None  # Carta com painel de séries aberto
-
-    if 'serie_page' not in st.session_state:
-        st.session_state.serie_page = 1
-
-    if 'sidebar_series_carta_id' not in st.session_state:
-        st.session_state.sidebar_series_carta_id = None
-
-    if 'sidebar_series_context' not in st.session_state:
-        st.session_state.sidebar_series_context = 'explorar'
+    st.session_state.setdefault('highlight_use_stemming', False)
+    st.session_state.setdefault('semantic_results', [])
+    st.session_state.setdefault('semantic_page', 1)
+    st.session_state.setdefault('cached_series_list', None)
+    st.session_state.setdefault('cached_series_list_valid', False)
+    st.session_state.setdefault('semantic_expand_state', {})  # Lazy-load state para expanders
+    st.session_state.setdefault('sem_carta_gerenciar', None)  # Carta com painel de séries aberto
+    st.session_state.setdefault('serie_page', 1)
+    st.session_state.setdefault('sidebar_series_carta_id', None)
+    st.session_state.setdefault('sidebar_series_context', 'explorar')
 
     # Cachear nome_index (used in navigation and filters)
     if 'nome_index' not in st.session_state:
@@ -1126,8 +1092,7 @@ with tab3:
 
         if series_list:
             # Dropdown para selecionar série
-            if 'manage_serie_select' not in st.session_state:
-                st.session_state.manage_serie_select = series_list[0]
+            st.session_state.setdefault('manage_serie_select', series_list[0])
 
             serie_para_gerenciar = st.selectbox(
                 "Selecione uma série para gerenciar:",

@@ -18,8 +18,7 @@ def initialize_tab_state():
     """Inicializa estado de carregamento das abas"""
     tabs = ['tab6_loaded', 'tab7_loaded', 'tab8_loaded', 'tab9_loaded']
     for tab in tabs:
-        if tab not in st.session_state:
-            st.session_state[tab] = False
+        st.session_state.setdefault(tab, False)
 
 
 def mark_tab_loaded(tab_number: int):
@@ -44,10 +43,8 @@ def show_lazy_loading_placeholder(tab_number: int):
 
 def initialize_search_cache():
     """Inicializa cache de busca e histórico"""
-    if 'search_cache' not in st.session_state:
-        st.session_state.search_cache = {}
-    if 'search_history' not in st.session_state:
-        st.session_state.search_history = []
+    st.session_state.setdefault('search_cache', {})
+    st.session_state.setdefault('search_history', [])
 
 
 def get_cached_search(query_key: str) -> Optional[Union[dict, List[Tuple[str, float]]]]:

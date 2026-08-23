@@ -27,10 +27,8 @@ class SearchSuggestions:
 
     def initialize_suggestions(self):
         """Inicializa cache de sugestões no session state"""
-        if "search_suggestions" not in st.session_state:
-            st.session_state.search_suggestions = self.default_suggestions.copy()
-        if "search_term_frequency" not in st.session_state:
-            st.session_state.search_term_frequency = {}
+        st.session_state.setdefault("search_suggestions", self.default_suggestions.copy())
+        st.session_state.setdefault("search_term_frequency", {})
 
     def extract_terms_from_history(self) -> List[str]:
         """Extrai termos do histórico de buscas"""
@@ -90,8 +88,7 @@ class SearchSuggestions:
 
     def update_frequency(self, termo: str):
         """Atualiza frequência de um termo"""
-        if "search_term_frequency" not in st.session_state:
-            st.session_state.search_term_frequency = {}
+        st.session_state.setdefault("search_term_frequency", {})
 
         termo_lower = termo.lower()
         freq_dict = st.session_state.search_term_frequency
@@ -120,12 +117,11 @@ class SearchSuggestions:
         Returns:
             IDs filtrados
         """
-        if "quick_filters" not in st.session_state:
-            st.session_state.quick_filters = {
-                "century_xx": False,
-                "only_with_data": False,
-                "only_with_location": False,
-            }
+        st.session_state.setdefault("quick_filters", {
+            "century_xx": False,
+            "only_with_data": False,
+            "only_with_location": False,
+        })
 
         filters = st.session_state.quick_filters
         filtered_results = results.copy()

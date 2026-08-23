@@ -44,10 +44,10 @@ from modules import (
 from modules.config_manager import EMBEDDING_MODEL, HIGHLIGHT_PALETTE
 from modules.ui_manager import (
     configure_page_style,
+    get_accent_color,
     get_plotly_color_palette,
     get_plotly_sequential_scale,
     breadcrumb_nav,
-    reset_context,
     apply_plotly_theme,
     format_pie_labels,
     render_letter_text,
@@ -203,19 +203,22 @@ def compute_histogram_cached(scores_tuple: tuple):
 # ============================================================================
 
 with st.sidebar:
-    # Header com Home button
-    col_icon, col_header, col_home = st.columns([0.8, 2.2, 1])
-    with col_icon:
-        st.image("assets/icon_historicidades.png", width=50, use_container_width=False)
-    with col_header:
-        st.markdown("### Historicidades Democráticas")
-        st.caption("Por Walderez Ramalho")
-    with col_home:
-        if st.button("🏠", key="home_button", help="Voltar ao início"):
-            reset_context()
-            st.session_state.semantic_page = 1
-            st.session_state.current_carta_id = None
-            st.rerun()
+    # Header
+    st.markdown(
+        f"""
+        <div style="line-height: 1.1; margin-bottom: 0.3rem;">
+            <div style="font-family: 'Source Serif 4', Georgia, serif; font-size: 2.5rem;
+                        font-weight: 600; color: {get_accent_color()};">
+                Historicidades Democráticas
+            </div>
+            <div style="font-size: 1.1rem; font-style: Manrope; letter-spacing: 0.1em;
+                        margin-top: 24px; opacity: 0.75;">
+                por Walderez Ramalho (UDESC)
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     st.markdown("---")
 

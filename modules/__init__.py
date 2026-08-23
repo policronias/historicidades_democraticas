@@ -37,7 +37,6 @@ from .ui_manager import (
     get_plotly_sequential_scale,
     sidebar_section,
     breadcrumb_nav,
-    reset_context,
     apply_plotly_theme,
     format_pie_labels,
 )
@@ -85,7 +84,6 @@ __all__ = [
     'get_plotly_sequential_scale',
     'sidebar_section',
     'breadcrumb_nav',
-    'reset_context',
     'apply_plotly_theme',
     'format_pie_labels',
     # Config

@@ -127,6 +127,16 @@ _CHART_THEME = {
 }
 
 
+def get_accent_color() -> str:
+    """
+    Retorna a cor de destaque (accent) do tema claro/escuro ativo, em hex.
+
+    Uso: elementos HTML customizados que não herdam cor do tema nativo
+    (ex: título estilizado na sidebar).
+    """
+    return _CHART_THEME[_current_theme_mode()]["accent"]
+
+
 def get_plotly_color_palette() -> list:
     """
     Retorna a paleta categórica de cores para gráficos Plotly, alinhada ao
@@ -230,11 +240,3 @@ def breadcrumb_nav(*items):
     st.caption(f"📍 {breadcrumb_text}")
 
 
-def reset_context():
-    """Reseta contexto de navegação mantendo session data"""
-    if 'current_carta_id' in st.session_state:
-        st.session_state.current_carta_id = None
-    if 'search_results' in st.session_state:
-        st.session_state.search_results = []
-    if 'semantic_results' in st.session_state:
-        st.session_state.semantic_results = []

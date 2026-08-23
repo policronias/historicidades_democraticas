@@ -31,11 +31,8 @@ from .search_suggestions import SearchSuggestions
 from .ui_manager import (
     configure_page_style,
     render_letter_text,
-    show_academic_header,
-    show_footer,
     get_plotly_color_palette,
     get_plotly_sequential_scale,
-    sidebar_section,
     breadcrumb_nav,
     apply_plotly_theme,
     format_pie_labels,
@@ -78,11 +75,8 @@ __all__ = [
     # UI functions
     'configure_page_style',
     'render_letter_text',
-    'show_academic_header',
-    'show_footer',
     'get_plotly_color_palette',
     'get_plotly_sequential_scale',
-    'sidebar_section',
     'breadcrumb_nav',
     'apply_plotly_theme',
     'format_pie_labels',

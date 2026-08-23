@@ -27,7 +27,7 @@ modules/
   frequency_analyzer.py (300) # Análise de frequência de termos (aba 9, agora documentada)
   stemming_engine.py    (~80) # Processamento de stemming/stemming com RSLP
   cache_manager.py      (127) # CONSOLIDADO: funções cacheadas (build_df_fast, compute_chart_data_cached, build_semantic_csv_cached)
-  ui_manager.py         (242) # CONSOLIDADO: CSS mínimo (só tipografia), tema herdado de .streamlit/config.toml, get_accent_color()
+  ui_manager.py         (201) # CONSOLIDADO: CSS mínimo (só tipografia), tema herdado de .streamlit/config.toml, get_accent_color()
   config_manager.py     (156) # Constantes, paths, paleta de cores, grupos de campos
   memory_monitor.py      (51) # Monitor de memória do processo (psutil), ativável via query string ?debug=true
 sessions/current_session.json  # Único arquivo de estado persistido (anotações, caderno, séries)
@@ -49,7 +49,7 @@ scripts/
 - ✅ **Theming movido para `.streamlit/config.toml`**: CSS manual de cores substituído por `[theme.light]`/`[theme.dark]` nativos do Streamlit (dois modos: "Papel de Arquivo" claro, "Grafite Noturno" escuro), habilitando o seletor de tema nativo (menu ☰ > Settings). `get_color_scheme()` foi removida; `configure_page_style()` agora só define a tipografia serif do texto da carta.
 - ✅ **`_CHART_THEME` em `ui_manager.py`**: como gráficos Plotly não herdam o tema nativo, as cores de `config.toml` são replicadas manualmente nesse dict (`light`/`dark`) e expostas via `get_accent_color()`, `get_plotly_color_palette()`, `get_plotly_sequential_scale()`.
 - ✅ **Cabeçalho da sidebar redesenhado**: ícone + título + botão "🏠 Home" (que chamava `reset_context()`) substituído por título HTML estilizado usando `get_accent_color()`. `reset_context()` ficou sem uso após a mudança e foi removida de `ui_manager.py` e dos exports de `modules/__init__.py`.
-- ⚠️ **Dead code identificado, não removido**: `show_academic_header()`, `show_footer()` e `sidebar_section()` em `ui_manager.py` continuam exportadas mas não são chamadas em nenhum lugar de `app.py` — candidatas a remoção numa limpeza futura, fora do escopo desta mudança.
+- ✅ **Dead code removido** (2026-08-23): `show_academic_header()`, `show_footer()` e `sidebar_section()` — nunca chamadas em `app.py` — removidas de `ui_manager.py` e dos exports de `modules/__init__.py`.
 
 ## 3. As 9 abas da aplicação
 

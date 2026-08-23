@@ -66,34 +66,6 @@ def render_letter_text(texto: str, compact: bool = False, accent: str = None):
         st.markdown(f'<div class="{classes}"{style}>{texto}</div>', unsafe_allow_html=True)
 
 
-def show_academic_header():
-    """
-    Exibe o cabeçalho acadêmico da aplicação.
-    """
-    col1, col2 = st.columns([1, 4])
-    with col1:
-        st.markdown("📚")
-    with col2:
-        st.markdown("### Historicidades Democráticas")
-        st.caption("Plataforma de Análise de Documentos Históricos")
-        st.caption("Navegue, busque, anote e analise correspondência histórica constitucional.")
-
-
-def show_footer():
-    """
-    Exibe o rodapé da aplicação com informações e créditos.
-    """
-    st.divider()
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        st.caption("📖 Developed with Streamlit")
-    with col2:
-        st.caption("🔐 Data is stored locally")
-    with col3:
-        st.caption("✨ Research Platform")
-
-
 def _current_theme_mode() -> str:
     """
     Retorna 'light' ou 'dark' com base no tema ativo (st.context.theme.type).
@@ -213,19 +185,6 @@ def format_pie_labels(fig):
         hovertemplate='<b>%{label}</b><br>Quantidade: %{value}<br>Percentual: %{percent}<extra></extra>'
     )
     return fig
-
-
-def sidebar_section(title: str, icon: str = ""):
-    """
-    Cria uma seção formatada na sidebar
-
-    Uso:
-        sidebar_section("🔍 BUSCAR & EXPLORAR")
-    """
-    if icon and not title.startswith(icon):
-        title = f"{icon} {title}"
-    st.markdown(f"### {title}")
-    st.divider()
 
 
 def breadcrumb_nav(*items):

@@ -2,7 +2,7 @@
 
 > Documento preparado para orientar planejamento de melhorias técnicas, novos recursos e evolução arquitetural do software. Descreve o estado real do código (não a intenção original), levantado por leitura direta de `app.py` e dos módulos em `modules/`.
 >
-> **Última atualização**: 2026-07-18 (pós-refatoração de cache e UI)
+> **Última atualização**: 2026-08-23 (migração para tema nativo Streamlit + redesign do cabeçalho da sidebar)
 
 ## 1. Propósito e contexto
 
@@ -15,7 +15,7 @@ A base principal (`cartas_db.json`) tem **~103 MB** e é carregada inteiramente 
 ## 2. Arquitetura geral
 
 ```
-app.py                      # Aplicação Streamlit (~3.281 linhas), single-page com 9 abas
+app.py                      # Aplicação Streamlit (~3.509 linhas), single-page com 9 abas
 modules/
   __init__.py                # Agregador de exports públicos dos módulos
   data_manager.py       (272) # Carga/troca de bases, índices, cache de JSON parseado em memória de módulo
@@ -27,8 +27,9 @@ modules/
   frequency_analyzer.py (300) # Análise de frequência de termos (aba 9, agora documentada)
   stemming_engine.py    (~80) # Processamento de stemming/stemming com RSLP
   cache_manager.py      (127) # CONSOLIDADO: funções cacheadas (build_df_fast, compute_chart_data_cached, build_semantic_csv_cached)
-  ui_manager.py         (210) # CONSOLIDADO: CSS centralizado, configure_page_style(), get_color_scheme()
+  ui_manager.py         (242) # CONSOLIDADO: CSS mínimo (só tipografia), tema herdado de .streamlit/config.toml, get_accent_color()
   config_manager.py     (156) # Constantes, paths, paleta de cores, grupos de campos
+  memory_monitor.py      (51) # Monitor de memória do processo (psutil), ativável via query string ?debug=true
 sessions/current_session.json  # Único arquivo de estado persistido (anotações, caderno, séries)
 cache/embeddings_*.npz         # Cache de embeddings por base de dados
 scripts/
@@ -40,9 +41,15 @@ scripts/
 
 **Refatoração realizada (2026-07-18)**:
 - ✅ **`cache_manager.py` consolidado**: funções cacheadas (`build_df_fast()`, `compute_chart_data_cached()`, `build_semantic_csv_cached()`) removidas de `app.py` e importadas de `modules.cache_manager`
-- ✅ **`ui_manager.py` integrado**: CSS removido de `app.py` (98 linhas); `configure_page_style()` chamada no startup; `get_color_scheme()` acessível
+- ✅ **`ui_manager.py` integrado**: CSS removido de `app.py` (98 linhas); `configure_page_style()` chamada no startup
 - ✅ **Redução de `app.py`**: 3378 → 3281 linhas (-97 linhas de duplicação); melhor separação de responsabilidades
 - ✅ **Nenhuma perda de funcionalidade**: todas as APIs mantidas idênticas; aplicação 100% funcional
+
+**Migração para tema nativo + redesign do cabeçalho (2026-08-23)**:
+- ✅ **Theming movido para `.streamlit/config.toml`**: CSS manual de cores substituído por `[theme.light]`/`[theme.dark]` nativos do Streamlit (dois modos: "Papel de Arquivo" claro, "Grafite Noturno" escuro), habilitando o seletor de tema nativo (menu ☰ > Settings). `get_color_scheme()` foi removida; `configure_page_style()` agora só define a tipografia serif do texto da carta.
+- ✅ **`_CHART_THEME` em `ui_manager.py`**: como gráficos Plotly não herdam o tema nativo, as cores de `config.toml` são replicadas manualmente nesse dict (`light`/`dark`) e expostas via `get_accent_color()`, `get_plotly_color_palette()`, `get_plotly_sequential_scale()`.
+- ✅ **Cabeçalho da sidebar redesenhado**: ícone + título + botão "🏠 Home" (que chamava `reset_context()`) substituído por título HTML estilizado usando `get_accent_color()`. `reset_context()` ficou sem uso após a mudança e foi removida de `ui_manager.py` e dos exports de `modules/__init__.py`.
+- ⚠️ **Dead code identificado, não removido**: `show_academic_header()`, `show_footer()` e `sidebar_section()` em `ui_manager.py` continuam exportadas mas não são chamadas em nenhum lugar de `app.py` — candidatas a remoção numa limpeza futura, fora do escopo desta mudança.
 
 ## 3. As 9 abas da aplicação
 
@@ -50,15 +57,15 @@ A interface é organizada em uma área de **Busca Avançada + Navegação por ID
 
 | # | Aba | Arquivo/linhas | Função |
 |---|-----|-----------------|--------|
-| 1 | 🔍 Explorar Cartas | app.py:828-1035 | Navegação sequencial (anterior/próxima/dropdown), metadados completos, anotação inline, painel de séries |
-| 2 | 📓 Caderno | app.py:1040-1067 | Anotação por carta + caderno de pesquisa livre em Markdown |
-| 3 | 🗂️ Séries Temáticas | app.py:1072-1433 | CRUD de séries, multiselect de cartas, paginação (25/página), download unificado |
-| 4 | 📥 Exportar | app.py:1438-1805 | Exportação de busca, série, filtro, caderno e base completa em múltiplos formatos |
-| 5 | ⚙️ Configurações | app.py:1810-1959 | Seleção/upload de base, backup/restore de sessão, limpeza |
-| 6 | 📊 Gráficos e Tabelas | app.py:1964-2154 | Gráficos Plotly demográficos/geográficos/temáticos sobre busca, filtro ou base inteira |
-| 7 | 🎯 Filtros | app.py:2159-2579 | Filtro multidimensional por campo (sexo, UF, faixa etária, renda, etc.) |
-| 8 | 🧠 Busca Semântica | app.py:2581-3062 | Busca por similaridade de embeddings RoBERTa, paginada, com threshold ajustável |
-| 9 | 📈 Análise de Frequência | app.py:3063-3298 | **Aba não documentada no README/CLAUDE.md atual** — análise comparativa multi-termo (ver §6) |
+| 1 | 🔍 Explorar Cartas | app.py:796-1030 | Navegação sequencial (anterior/próxima/dropdown), metadados completos, anotação inline, painel de séries |
+| 2 | 📓 Caderno | app.py:1031-1063 | Anotação por carta + caderno de pesquisa livre em Markdown |
+| 3 | 🗂️ Séries Temáticas | app.py:1064-1476 | CRUD de séries, multiselect de cartas, paginação (25/página), download unificado |
+| 4 | 📥 Exportar | app.py:1477-1849 | Exportação de busca, série, filtro, caderno e base completa em múltiplos formatos |
+| 5 | ⚙️ Configurações | app.py:1850-2091 | Seleção/upload de base, backup/restore de sessão, limpeza |
+| 6 | 📊 Gráficos e Tabelas | app.py:2092-2339 | Gráficos Plotly demográficos/geográficos/temáticos sobre busca, filtro ou base inteira |
+| 7 | 🎯 Filtros | app.py:2340-2775 | Filtro multidimensional por campo (sexo, UF, faixa etária, renda, etc.) |
+| 8 | 🧠 Busca Semântica | app.py:2776-3263 | Busca por similaridade de embeddings RoBERTa, paginada, com threshold ajustável |
+| 9 | 📈 Análise de Frequência | app.py:3264-3502 | Análise comparativa multi-termo (ver §6) |
 
 A **sidebar** é compartilhada entre as abas 1, 7 e 8 via `st.session_state.sidebar_series_context` (`'explorar'`, `'filtro'`, `'semantica'`), evitando duplicar a lógica de gerenciamento de séries em cada aba — um painel único (`💾 Salvar` / multiselect) reage ao contexto de onde o usuário veio.
 
@@ -153,12 +160,13 @@ A busca semântica paginada (aba 8) tem uma armadilha de UX documentada no CLAUD
 
 - Sem chamadas a APIs externas de IA — embeddings rodam 100% localmente (download único do modelo via Hugging Face Hub, ~420 MB).
 - Dados e sessão persistidos apenas em arquivos locais (`cartas_db.json`, `sessions/current_session.json`, `cache/*.npz`).
-- Deploy público via **Streamlit Community Cloud**, protegido por senha de acesso (mecanismo nativo do Streamlit Cloud, não implementado em código — não há autenticação de usuários/roles na aplicação).
-- Sem testes automatizados (`pytest`, etc.) identificados no projeto.
+- Deploy público via **Streamlit Community Cloud**, protegido por senha de acesso (mecanismo nativo do Streamlit Cloud, não implementado em código — não há autenticação de usuários/roles na aplicação). Cloud redeploya automaticamente a cada push em `origin/master` no GitHub — não há passo de deploy manual separado do `git push`.
+- Local e Cloud rodam exatamente o mesmo `app.py`/`modules/` — não há branch ou config divergente por ambiente.
+- Testes automatizados existem em `tests/` (`pytest`), ver §15 "Resolvidos".
 
 ## 14. Dependências principais
 
-`streamlit==1.28.1` · `pandas==2.1.3` · `plotly==5.20.0` · `sentence-transformers>=2.2.0` · `numpy>=1.24.0` · `reportlab>=4.0.0` · `matplotlib>=3.6.0` · `pyarrow>=14.0.0` · `openpyxl>=3.1.0` · `tqdm>=4.64.0`.
+Versões mínimas (`requirements.txt` usa `>=`; ver arquivo para a lista exata): `streamlit>=1.31.0` · `pandas>=2.2.0` · `plotly>=5.22.0` · `sentence-transformers>=2.4.0` · `nltk>=3.8.0` · `numpy>=1.26.0` · `reportlab>=4.1.0` · `matplotlib>=3.10.0` · `pyarrow>=17.0.0` · `openpyxl>=3.1.2` · `tqdm>=4.67.0` · `filelock>=3.13.0` · `psutil>=5.9.0` (usado por `modules/memory_monitor.py`, opcional/debug).
 
 ## 15. Oportunidades técnicas identificadas (para discussão de roadmap)
 

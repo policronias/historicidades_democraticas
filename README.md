@@ -68,7 +68,8 @@ Plataforma completa de análise de documentos históricos construída com **Stre
 - **Relatório Analítico**: HTML com gráficos interativos Plotly, tabelas e metadados
 
 ### 10. **Design & UX**
-- Paleta acadêmica (azul/cinza com acentos)
+- Tema nativo Streamlit com dois modos: claro "Papel de Arquivo" (bege/terracota) e escuro "Grafite Noturno", alternáveis pelo menu ☰ > Settings
+- Tipografia serif (Source Serif 4) para leitura longa do texto das cartas
 - Interface responsiva (desktop/tablet)
 - Sidebar dinâmica com contexto de navegação
 - Ícones intuitivos
@@ -147,11 +148,13 @@ A aplicação será aberta em `http://localhost:8501`
 
 ```
 historicidades_democraticas/
-├── app.py                          # Aplicação principal Streamlit (3281 linhas)
+├── app.py                          # Aplicação principal Streamlit (~3509 linhas)
 ├── requirements.txt                # Dependências Python
 ├── cartas_db.json                  # Base de dados JSON (~72k cartas)
 ├── CLAUDE.md                       # Referência de arquitetura
 ├── README.md                       # Este arquivo
+├── .streamlit/
+│   └── config.toml                 # Tema nativo (claro/escuro), fontes, raio de borda
 ├── modules/
 │   ├── __init__.py                # Exports de todos os módulos
 │   ├── data_manager.py            # CRUD, índices, load/upload de bases
@@ -163,8 +166,9 @@ historicidades_democraticas/
 │   ├── frequency_analyzer.py      # Análise comparativa de frequência de termos
 │   ├── stemming_engine.py         # Processamento de stemming (suporta highlight)
 │   ├── cache_manager.py           # Cache consolidado: DataFrames, gráficos, CSV
-│   ├── ui_manager.py              # Estilos CSS centralizados, paleta de cores
-│   └── config_manager.py          # Constantes, paths, paleta, grupos de campos
+│   ├── ui_manager.py              # CSS mínimo, cores via tema nativo (.streamlit/config.toml)
+│   ├── config_manager.py          # Constantes, paths, paleta, grupos de campos
+│   └── memory_monitor.py          # Monitor de memória (debug, ?debug=true na URL)
 ├── scripts/
 │   ├── backup_sessao.py           # Script: backup manual da sessão
 │   ├── consolidar_buscas.py       # Script: consolidar múltiplos CSVs de busca
@@ -218,9 +222,8 @@ historicidades_democraticas/
 - CSV builder cached
 
 ### UI Manager (`modules/ui_manager.py`)
-- Estilos CSS reutilizáveis
-- Header/footer acadêmico
-- Temas de cor
+- CSS mínimo (tipografia serif do texto da carta) — cores vêm do tema nativo Streamlit
+- Helpers de cor/tema para Plotly (`get_accent_color`, `get_plotly_color_palette`, `apply_plotly_theme`), já que gráficos não herdam o tema nativo automaticamente
 
 ### Config Manager (`modules/config_manager.py`)
 - Paths (PROJECT_DIR, DATABASE_PATH)
@@ -253,24 +256,23 @@ Toda a sessão é salva automaticamente em `sessions/current_session.json`:
 ## 🎨 Customização
 
 ### Alterar Paleta de Cores
-Em `modules/ui_manager.py`, modifique a função `configure_page_style()` (seção `:root`):
+As cores vêm do tema nativo do Streamlit, em `.streamlit/config.toml` (seções `[theme.light]` e `[theme.dark]`):
 
-```css
---primary-color: #2b2d33;        /* Grafite primário */
---primary-hover: #45474e;        /* Grafite hover */
---accent-color: #d97706;         /* Âmbar destaque */
---accent-hover: #b45309;         /* Âmbar hover */
---text-primary: #1f2937;         /* Texto principal */
---text-secondary: #6b7280;       /* Texto secundário */
---bg-light: #f4f4f2;             /* Fundo claro */
---border-color: #ddd9d2;         /* Cor de bordas */
+```toml
+[theme.light]
+primaryColor = "#9c6b3f"
+backgroundColor = "#f7f3ea"
+secondaryBackgroundColor = "#efe9dc"
+textColor = "#2b2621"
+# ... demais cores em .streamlit/config.toml
 ```
 
-Ou acesse o esquema de cores programaticamente:
+Gráficos Plotly não herdam esse tema automaticamente — as mesmas cores estão replicadas em `_CHART_THEME`, em `modules/ui_manager.py`. Ao mudar uma cor no `config.toml`, atualize também `_CHART_THEME` para os gráficos acompanharem:
 
 ```python
-from modules.ui_manager import get_color_scheme
-colors = get_color_scheme()  # Retorna dict com 13 cores
+from modules.ui_manager import get_accent_color, get_plotly_color_palette
+accent = get_accent_color()             # cor de destaque do tema ativo (claro/escuro)
+paleta = get_plotly_color_palette()      # paleta categórica para gráficos Plotly
 ```
 
 ### Adicionar Variações Lexicais
@@ -352,15 +354,18 @@ streamlit cache clear
 
 ## 📚 Dependências
 
-- **Streamlit** 1.28: Interface web
-- **Pandas** 2.1: Manipulação de dados, DataFrames, exportação Parquet
-- **PyArrow** ≥14: Backend Parquet para pandas
-- **Plotly** 5.20: Gráficos interativos (HTML)
-- **NumPy** ≥1.24: Operações numéricas / embeddings
-- **Sentence-Transformers** ≥2.2: Embeddings RoBERTa multilíngue
-- **ReportLab** ≥4.0: Geração de PDF
-- **Matplotlib** ≥3.6: Gráficos embutidos no PDF
-- **tqdm** ≥4.64: Progress bar nos embeddings
+- **Streamlit** ≥1.31: Interface web, tema nativo (`.streamlit/config.toml`)
+- **Pandas** ≥2.2: Manipulação de dados, DataFrames, exportação Parquet
+- **PyArrow** ≥17: Backend Parquet para pandas
+- **Plotly** ≥5.22: Gráficos interativos (HTML)
+- **NumPy** ≥1.26: Operações numéricas / embeddings
+- **Sentence-Transformers** ≥2.4: Embeddings RoBERTa multilíngue
+- **NLTK** ≥3.8: Stemming RSLP (variações lexicais)
+- **ReportLab** ≥4.1: Geração de PDF
+- **Matplotlib** ≥3.10: Gráficos embutidos no PDF
+- **tqdm** ≥4.67: Progress bar nos embeddings
+- **filelock** ≥3.13: Escrita concorrente segura de `sessions/current_session.json`
+- **psutil** ≥5.9: Monitor de memória (debug, `?debug=true`)
 - **re, json, csv, zipfile, datetime, io**: stdlib
 
 ## 🔐 Segurança

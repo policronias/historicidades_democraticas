@@ -144,7 +144,7 @@ A busca semântica paginada (aba 8) tem uma armadilha de UX documentada no CLAUD
 
 ## 12. Cache e performance
 
-- `@st.cache_data` em `cache_manager.py` (sem TTL) e em `app.py` (`compute_chart_data_cached` com `ttl=3600`) — **duas implementações paralelas da mesma função**, uma no módulo (não usada por `app.py`, que redefine a sua própria) e outra inline.
+- `compute_chart_data_cached` (com `ttl=3600`) está consolidada em `cache_manager.py`; a duplicação com uma versão inline em `app.py` foi resolvida no refactor de 2026-07-18 (ver item "Resolvidos" abaixo).
 - `get_available_databases()` cacheado com `ttl=60` para não escanear o disco a cada rerun.
 - Managers (`dm`, `am`, `sm`, `se`, `sem_e`) são extraídos do `session_state` para variáveis locais no topo do script — comentário explícito no código: "evita múltiplos lookups de `st.session_state` por rerun".
 - `_todas_cartas = dm.get_todas_cartas()` também é cacheado localmente por render pelo mesmo motivo (evita "40+ chamadas no mesmo render").
@@ -164,15 +164,15 @@ A busca semântica paginada (aba 8) tem uma armadilha de UX documentada no CLAUD
 
 Levantamento neutro de pontos que um plano de evolução técnica provavelmente vai querer endereçar — não são bugs confirmados, são observações de arquitetura.
 
-### Resolvidos (2026-07-18)
-- ✅ **Duplicação cache/UI**: `build_df_fast()`, `compute_chart_data_cached()`, `build_semantic_csv_cached()` e CSS consolidados em `cache_manager.py` e `ui_manager.py`. App.py reduzido em 97 linhas.
-- ✅ **Documentação**: README.md e CLAUDE.md agora documentam as 9 abas incluindo Análise de Frequência.
+### Resolvidos
+- ✅ **Duplicação cache/UI** (2026-07-18): `build_df_fast()`, `compute_chart_data_cached()`, `build_semantic_csv_cached()` e CSS consolidados em `cache_manager.py` e `ui_manager.py`. App.py reduzido em 97 linhas.
+- ✅ **Documentação** (2026-07-18): README.md e CLAUDE.md agora documentam as 9 abas incluindo Análise de Frequência.
+- ✅ **Config morta**: `EMBEDDING_MODEL` em `config_manager.py` já reflete o modelo real (`paraphrase-multilingual-mpnet-base-v2`), consumido tanto pelo default de `SemanticEngine` quanto por `app.py`. `PROJECT_DIR`/`DATA_DIR`/`BASES_DIR` não existem mais no módulo.
+- ✅ **Ausência de versionamento**: projeto passou a ser um repositório git, com histórico de commits ativo.
+- ✅ **Persistência single-file, single-user**: `annotation_manager.py` agora usa `filelock.FileLock` (timeout de 5s) ao salvar `sessions/current_session.json`, evitando sobrescrita silenciosa entre sessões concorrentes.
+- ✅ **Sem testes automatizados**: existe `tests/` (`conftest.py`, `test_series_manager.py`, `test_annotation_manager.py`, `test_search_engine.py`) mais `test_concurrent_sessions.py` na raiz, todos executáveis via pytest.
+- ✅ **Busca lexical fixa**: `LEXICAL_VARIATIONS` foi substituído por `stemming_engine.py`, que faz stemming real via RSLP (NLTK) — busca por variações lexicais deixou de depender de um dicionário fixo de termos.
 
 ### Remanescentes
-1. **Config morta**: `EMBEDDING_MODEL` (MiniLM) em `config_manager.py` não corresponde ao modelo real usado (mpnet, hardcoded no default de `SemanticEngine`). Também `PROJECT_DIR`/`DATA_DIR`/`BASES_DIR` não parecem ser usados por `DataManager` (que usa `data_dir="."` por padrão).
-2. **Ausência de versionamento**: projeto não é um repositório git — qualquer refatoração maior hoje não tem rede de segurança de histórico/rollback.
-3. **Escala e memória**: base inteira (72.719 cartas, ~103 MB de JSON) carregada em memória do processo Streamlit a cada sessão; embeddings adicionam outra matriz (72.719 × 768 float32 ≈ 224 MB) quando carregados. Em ambientes com recursos limitados (Streamlit Cloud free tier) isso é um teto de escala real caso a base cresça.
-5. **Persistência single-file, single-user**: `sessions/current_session.json` não tem locking; múltiplos usuários simultâneos no deploy público podem sobrescrever anotações/séries uns dos outros silenciosamente.
-6. **PDF vs HTML — dois pipelines de gráfico**: qualquer novo tipo de gráfico exige implementação separada em matplotlib (PDF) e Plotly (HTML), dobrando o custo de manutenção de visualizações.
-7. **Sem testes automatizados**: qualquer refatoração dos módulos de busca/semântica/exportação depende de verificação manual via UI.
-8. **Busca lexical fixa**: `LEXICAL_VARIATIONS` é um dicionário fixo de 11 termos; termos fora dele caem num padrão genérico de prefixo, sem verdadeira análise morfológica (não há stemmer/lemmatizador).
+1. **Escala e memória**: base inteira (72.719 cartas, ~103 MB de JSON) carregada em memória do processo Streamlit a cada sessão; embeddings adicionam outra matriz (72.719 × 768 float32 ≈ 224 MB) quando carregados. Em ambientes com recursos limitados (Streamlit Cloud free tier) isso é um teto de escala real caso a base cresça.
+2. **PDF vs HTML — dois pipelines de gráfico**: qualquer novo tipo de gráfico exige implementação separada em matplotlib (PDF) e Plotly (HTML), dobrando o custo de manutenção de visualizações.

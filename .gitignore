@@ -28,9 +28,7 @@ share/python-wheels/
 MANIFEST
 
 # Streamlit
-.streamlit/
 .streamlit/secrets.toml
-.streamlit/config.toml
 
 # Cache & Session files
 cache/

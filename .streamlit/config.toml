@@ -1,0 +1,73 @@
+# Tema nativo Streamlit — Historicidades Democráticas
+#
+# Dois modos definidos ([theme.light] e [theme.dark]) para habilitar o
+# seletor nativo de tema (menu ☰ > Settings). Fontes, raio e bordas ficam
+# no bloco [theme] comum; cores específicas de cada modo ficam nos blocos
+# [theme.light] / [theme.dark].
+#
+# Claro "Papel de Arquivo": fundo bege-papel, texto grafite quente, accent
+# terracota/sépia — pensado para leitura longa em ambientes claros.
+# Escuro "Grafite Noturno": evolução do dark QVR anterior, com contraste
+# suavizado (sem preto/branco quase puros) para reduzir fadiga em sessões
+# longas de pesquisa.
+
+[theme]
+font = "Manrope:https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"
+headingFont = "'Source Serif 4':https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap"
+codeFont = "'IBM Plex Mono':https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap"
+baseFontSize = 16
+baseFontWeight = 400
+baseRadius = "8px"
+showWidgetBorder = true
+showSidebarBorder = true
+linkUnderline = false
+
+[theme.light]
+primaryColor = "#9c6b3f"
+backgroundColor = "#f7f3ea"
+secondaryBackgroundColor = "#efe9dc"
+textColor = "#2b2621"
+borderColor = "#ddd4c2"
+linkColor = "#8a5a2f"
+codeBackgroundColor = "#efe9dc"
+codeTextColor = "#2b2621"
+dataframeBorderColor = "#ddd4c2"
+dataframeHeaderBackgroundColor = "#efe9dc"
+greenColor = "#4f9d6e"
+redColor = "#c1555c"
+orangeColor = "#b8823a"
+blueColor = "#5b7c99"
+grayColor = "#6b645a"
+chartCategoricalColors = ["#9c6b3f", "#4b4740", "#4f9d6e", "#c1555c", "#b8823a", "#5b7c99"]
+
+[theme.light.sidebar]
+backgroundColor = "#efe9dc"
+secondaryBackgroundColor = "#e5ddc9"
+textColor = "#2b2621"
+borderColor = "#ddd4c2"
+primaryColor = "#9c6b3f"
+
+[theme.dark]
+primaryColor = "#c99a5e"
+backgroundColor = "#181c21"
+secondaryBackgroundColor = "#20262c"
+textColor = "#e7e3d8"
+borderColor = "#3a4d5c"
+linkColor = "#eec98a"
+codeBackgroundColor = "#20262c"
+codeTextColor = "#e7e3d8"
+dataframeBorderColor = "#3a4d5c"
+dataframeHeaderBackgroundColor = "#20262c"
+greenColor = "#6fc191"
+redColor = "#e2727a"
+orangeColor = "#e8b563"
+blueColor = "#7dd3fc"
+grayColor = "#a9b6c2"
+chartCategoricalColors = ["#c99a5e", "#a9b6c2", "#6fc191", "#e2727a", "#e8b563", "#7dd3fc"]
+
+[theme.dark.sidebar]
+backgroundColor = "#141a1f"
+secondaryBackgroundColor = "#1b2229"
+textColor = "#e7e3d8"
+borderColor = "#3a4d5c"
+primaryColor = "#c99a5e"

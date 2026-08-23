@@ -30,10 +30,11 @@ from .feedback_manager import FeedbackManager
 from .search_suggestions import SearchSuggestions
 from .ui_manager import (
     configure_page_style,
+    render_letter_text,
     show_academic_header,
     show_footer,
-    get_color_scheme,
     get_plotly_color_palette,
+    get_plotly_sequential_scale,
     sidebar_section,
     breadcrumb_nav,
     reset_context,
@@ -44,7 +45,7 @@ from .config_manager import (
     PAGE_CONFIG,
     METADATA_FIELDS,
     ANALYSIS_FIELDS,
-    COLORS,
+    HIGHLIGHT_PALETTE,
     MESSAGES,
 )
 
@@ -77,10 +78,11 @@ __all__ = [
     'SearchSuggestions',
     # UI functions
     'configure_page_style',
+    'render_letter_text',
     'show_academic_header',
     'show_footer',
-    'get_color_scheme',
     'get_plotly_color_palette',
+    'get_plotly_sequential_scale',
     'sidebar_section',
     'breadcrumb_nav',
     'reset_context',
@@ -90,6 +92,6 @@ __all__ = [
     'PAGE_CONFIG',
     'METADATA_FIELDS',
     'ANALYSIS_FIELDS',
-    'COLORS',
+    'HIGHLIGHT_PALETTE',
     'MESSAGES',
 ]

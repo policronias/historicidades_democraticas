@@ -41,15 +41,16 @@ from modules import (
     get_cached_engine_search,
     cache_engine_search_result,
 )
-from modules.config_manager import EMBEDDING_MODEL
+from modules.config_manager import EMBEDDING_MODEL, HIGHLIGHT_PALETTE
 from modules.ui_manager import (
     configure_page_style,
-    get_color_scheme,
     get_plotly_color_palette,
+    get_plotly_sequential_scale,
     breadcrumb_nav,
     reset_context,
     apply_plotly_theme,
     format_pie_labels,
+    render_letter_text,
 )
 from modules.memory_monitor import display_memory_monitor
 
@@ -207,8 +208,8 @@ with st.sidebar:
     with col_icon:
         st.image("assets/icon_historicidades.png", width=50, use_container_width=False)
     with col_header:
-        st.markdown("<h1 style='color: #8b6f47; margin-bottom: 0; margin-top: 0;'>Historicidades Democráticas</h1>", unsafe_allow_html=True)
-        st.markdown("<sub style='color: var(--text-secondary); font-size: 18px;'>Por Walderez Ramalho</sub>", unsafe_allow_html=True)
+        st.markdown("### Historicidades Democráticas")
+        st.caption("Por Walderez Ramalho")
     with col_home:
         if st.button("🏠", key="home_button", help="Voltar ao início"):
             reset_context()
@@ -468,11 +469,15 @@ with st.sidebar:
             else:
                 st.caption("_Nenhuma série vinculada ainda_")
 
-            _sb_ms_key = f"sb_ms_{_sb_carta_id}"
+            # Chave inclui as séries atuais: se mudarem por qualquer via (esta ou
+            # outra aba), o widget remonta com o default correto em vez de manter
+            # a seleção antiga presa no session_state.
+            _sb_series_validas = [s for s in _sb_series_atuais if s in _sb_todas_series]
+            _sb_ms_key = f"sb_ms_{_sb_carta_id}_{'|'.join(sorted(_sb_series_validas))}"
             st.multiselect(
                 "Alterar séries:",
                 options=_sb_todas_series,
-                default=[s for s in _sb_series_atuais if s in _sb_todas_series],
+                default=_sb_series_validas,
                 key=_sb_ms_key,
             )
 
@@ -927,21 +932,16 @@ with tab1:
 
             # Aplica destaques se houver termos buscados e destaque ativo
             if st.session_state.highlighted_terms and st.session_state.highlight_active:
-                cores_destaque = ["#fbbf24", "#f97316", "#06b6d4", "#34d399", "#c084fc"]
                 texto_destacado = se.highlight_multiple_terms(
                     texto,
                     st.session_state.highlighted_terms,
-                    cores_destaque[:len(st.session_state.highlighted_terms)],
+                    HIGHLIGHT_PALETTE[:len(st.session_state.highlighted_terms)],
                     use_regex=st.session_state.highlight_use_regex,
                     use_stemming=st.session_state.get('highlight_use_stemming', False)
                 )
-                st.markdown(texto_destacado, unsafe_allow_html=True)
+                render_letter_text(texto_destacado)
             else:
-                st.markdown(f"""
-                <div style="background-color: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 4px; padding: 15px; min-height: 300px; overflow-y: auto; font-family: monospace; white-space: pre-wrap; word-wrap: break-word; color: var(--text-primary);">
-                {texto}
-                </div>
-                """, unsafe_allow_html=True)
+                render_letter_text(texto)
 
             # Anotações da Carta
             st.markdown("---")
@@ -1183,12 +1183,14 @@ with tab3:
 
             series_da_carta = sm.get_series_carta(st.session_state.current_carta_id)
 
-            # Seleção de séries
+            # Seleção de séries — chave inclui as séries atuais para o widget
+            # remontar com o default certo quando a vinculação mudar por outra via
+            # (ex: painel da sidebar), em vez de manter seleção antiga presa.
             series_selecionadas = st.multiselect(
                 "Selecione as séries para esta carta:",
                 options=_todas_series,
                 default=series_da_carta,
-                key=f"serie_multiselect_{st.session_state.current_carta_id}"
+                key=f"serie_multiselect_{st.session_state.current_carta_id}_{'|'.join(sorted(series_da_carta))}"
             )
 
             # Atualizar associações — uma única chamada + um único save_session()
@@ -1257,13 +1259,7 @@ with tab3:
                                 )
                                 st.markdown("**Texto da carta:**")
                                 _texto_s = carta.get('texto', '') or ''
-                                st.markdown(
-                                    f'<div style="background-color: var(--bg-tertiary); border: 1px solid var(--border-color); '
-                                    f'border-radius: 4px; padding: 12px; font-family: monospace; '
-                                    f'white-space: pre-wrap; word-wrap: break-word; color: var(--text-primary); '
-                                    f'max-height: 300px; overflow-y: auto;">{_texto_s}</div>',
-                                    unsafe_allow_html=True
-                                )
+                                render_letter_text(_texto_s, compact=True)
                                 st.markdown("")
                                 _col_abrir_s, _col_remover_s = st.columns(2)
                                 with _col_abrir_s:
@@ -2203,14 +2199,14 @@ with tab6:
                                      color_discrete_sequence=_plotly_colors)
                         format_pie_labels(_fig)
                         apply_plotly_theme(_fig)
-                        st.plotly_chart(_fig, use_container_width=True)
+                        st.plotly_chart(_fig, use_container_width=True, theme=None)
                     if 'estado_civil' in _cd:
                         _fig = px.pie(values=_cd['estado_civil']['values'], names=_cd['estado_civil']['names'],
                                      hole=0.4, title="Estado Civil",
                                      color_discrete_sequence=_plotly_colors)
                         format_pie_labels(_fig)
                         apply_plotly_theme(_fig)
-                        st.plotly_chart(_fig, use_container_width=True)
+                        st.plotly_chart(_fig, use_container_width=True, theme=None)
                 with col2:
                     if 'faixa_etaria' in _cd:
                         _d = _cd['faixa_etaria']
@@ -2219,14 +2215,14 @@ with tab6:
                                       color_discrete_sequence=[_plotly_colors[0]])
                         _fig.update_xaxes(tickangle=-45)
                         apply_plotly_theme(_fig)
-                        st.plotly_chart(_fig, use_container_width=True)
+                        st.plotly_chart(_fig, use_container_width=True, theme=None)
                     if 'morador' in _cd:
                         _fig = px.pie(values=_cd['morador']['values'], names=_cd['morador']['names'],
                                      hole=0.4, title="Zona (Urbana/Rural)",
                                      color_discrete_sequence=_plotly_colors)
                         format_pie_labels(_fig)
                         apply_plotly_theme(_fig)
-                        st.plotly_chart(_fig, use_container_width=True)
+                        st.plotly_chart(_fig, use_container_width=True, theme=None)
 
             col3, col4 = st.columns(2)
             with col3:
@@ -2235,14 +2231,14 @@ with tab6:
                     _fig = px.bar(x=_d['values'], y=_d['names'], orientation='h', title="Escolaridade",
                                  color_discrete_sequence=[_plotly_colors[0]])
                     apply_plotly_theme(_fig)
-                    st.plotly_chart(_fig, use_container_width=True)
+                    st.plotly_chart(_fig, use_container_width=True, theme=None)
             with col4:
                 if 'faixa_renda' in _cd:
                     _d = _cd['faixa_renda']
                     _fig = px.bar(x=_d['values'], y=_d['names'], orientation='h', title="Faixa de Renda",
                                  color_discrete_sequence=[_plotly_colors[0]])
                     apply_plotly_theme(_fig)
-                    st.plotly_chart(_fig, use_container_width=True)
+                    st.plotly_chart(_fig, use_container_width=True, theme=None)
 
         # ========== SEÇÃO B: LOCALIDADE ==========
         with st.expander("📍 Localidade", expanded=True):
@@ -2261,7 +2257,7 @@ with tab6:
                                       color_discrete_sequence=[_plotly_colors[0]])
                         _fig.update_xaxes(tickangle=-45)
                         apply_plotly_theme(_fig)
-                        st.plotly_chart(_fig, use_container_width=True)
+                        st.plotly_chart(_fig, use_container_width=True, theme=None)
                 with col2:
                     if 'municipio' in _cd:
                         _d = _cd['municipio']
@@ -2274,9 +2270,9 @@ with tab6:
                     _uf_df = pd.DataFrame({'Estado': _d['names'][::-1], 'Quantidade': _d['values'][::-1]})
                     _fig = px.bar(_uf_df, x='Quantidade', y='Estado', orientation='h',
                                  title="Distribuição Geográfica das Cartas por Estado",
-                                 color='Quantidade', color_continuous_scale=['#2b2d33', '#d97706'])
+                                 color='Quantidade', color_continuous_scale=get_plotly_sequential_scale())
                     apply_plotly_theme(_fig)
-                    st.plotly_chart(_fig, use_container_width=True)
+                    st.plotly_chart(_fig, use_container_width=True, theme=None)
 
         # ========== SEÇÃO C: CONTEÚDO TEMÁTICO ==========
         with st.expander("📚 Conteúdo Temático", expanded=True):
@@ -2292,7 +2288,7 @@ with tab6:
                                      labels={'x': 'Quantidade', 'y': 'Atividade'},
                                      color_discrete_sequence=[_plotly_colors[0]])
                         apply_plotly_theme(_fig)
-                        st.plotly_chart(_fig, use_container_width=True)
+                        st.plotly_chart(_fig, use_container_width=True, theme=None)
                     if 'origem' in _cd:
                         _d = _cd['origem']
                         _fig = px.bar(x=_d['names'], y=_d['values'], title="Cartas por Origem (Lote)",
@@ -2300,7 +2296,7 @@ with tab6:
                                       color_discrete_sequence=[_plotly_colors[0]])
                         _fig.update_xaxes(tickangle=-45)
                         apply_plotly_theme(_fig)
-                        st.plotly_chart(_fig, use_container_width=True)
+                        st.plotly_chart(_fig, use_container_width=True, theme=None)
                 with col2:
                     if 'catalogo' in _cd:
                         _d = _cd['catalogo']
@@ -2311,14 +2307,14 @@ with tab6:
                                      title=_title_cats,
                                      color_discrete_sequence=[_plotly_colors[0]])
                         apply_plotly_theme(_fig)
-                        st.plotly_chart(_fig, use_container_width=True)
+                        st.plotly_chart(_fig, use_container_width=True, theme=None)
                     if 'indexacao' in _cd:
                         _d = _cd['indexacao']
                         _fig = px.bar(x=_d['values'][:20], y=_d['names'][:20], orientation='h',
                                      title="Indexações Mais Frequentes (Top 20)",
                                      color_discrete_sequence=[_plotly_colors[0]])
                         apply_plotly_theme(_fig)
-                        st.plotly_chart(_fig, use_container_width=True)
+                        st.plotly_chart(_fig, use_container_width=True, theme=None)
 
     else:
         st.error("❌ Nenhuma carta disponível para o escopo selecionado. Ajuste suas opções.")
@@ -2586,11 +2582,7 @@ with tab7:
                 # Texto da carta
                 st.subheader("📖 Texto")
                 texto = carta.get('texto', '')
-                st.markdown(f"""
-                <div style="background-color: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 4px; padding: 15px; min-height: 200px; overflow-y: auto; font-family: monospace; white-space: pre-wrap; word-wrap: break-word; color: var(--text-primary);">
-                {texto}
-                </div>
-                """, unsafe_allow_html=True)
+                render_letter_text(texto)
 
                 # Botão Gerenciar Séries (sidebar)
                 st.markdown("")
@@ -3039,7 +3031,7 @@ with tab8:
             bargap=0.05
         )
         apply_plotly_theme(_fig_hist)
-        st.plotly_chart(_fig_hist, use_container_width=True)
+        st.plotly_chart(_fig_hist, use_container_width=True, theme=None)
 
         if not _resultados_filtrados:
             st.info(
@@ -3081,15 +3073,6 @@ with tab8:
                 st.session_state.series_list_cache_valid = True
             _series_list_sem_cached = st.session_state.series_list_cache
 
-            # OTIMIZAÇÃO PHASE 2: Pré-carregar séries de cartas do expander se necessário
-            # (lazy-load: só carrega quando expander é aberto pela primeira vez)
-            # Cache series per query para não refetch ao paginar
-            _query_hash = hash(st.session_state.get('semantic_query', ''))
-            if st.session_state.get('_semantic_series_cache_query') != _query_hash:
-                st.session_state._semantic_series_cache = {}
-                st.session_state._semantic_series_cache_query = _query_hash
-            _series_carta_cache = st.session_state._semantic_series_cache
-
             _rerun_semantica = False
             for _rank_global, (_carta_id_sem, _score_sem) in enumerate(
                 _resultados_pagina, _inicio + 1
@@ -3119,11 +3102,8 @@ with tab8:
                         f"🎓 **Instrução:** {_instrucao_sem}"
                     )
 
-                    # Séries temáticas associadas
-                    if _carta_id_sem not in _series_carta_cache:
-                        _series_carta_cache[_carta_id_sem] = sm.get_series_carta(_carta_id_sem)
-
-                    _series_desta_carta = _series_carta_cache[_carta_id_sem]
+                    # Séries temáticas associadas (lookup O(1) — sempre atual, sem cache)
+                    _series_desta_carta = sm.get_series_carta(_carta_id_sem)
                     if _series_desta_carta:
                         _series_str = " &nbsp;·&nbsp; ".join([f"🗂️ {s}" for s in _series_desta_carta])
                         st.caption(f"**Séries:** {_series_str}")
@@ -3132,13 +3112,7 @@ with tab8:
 
                     # Texto completo
                     st.markdown("**Texto da carta:**")
-                    st.markdown(
-                        f'<div style="background-color: var(--bg-tertiary); border: 1px solid var(--border-color); '
-                        f'border-radius: 4px; padding: 12px; font-family: monospace; '
-                        f'white-space: pre-wrap; word-wrap: break-word; color: var(--text-primary); '
-                        f'max-height: 300px; overflow-y: auto;">{_texto_sem}</div>',
-                        unsafe_allow_html=True
-                    )
+                    render_letter_text(_texto_sem, compact=True)
                     st.markdown("")
                     _col_abrir, _col_series = st.columns([1, 2])
 
@@ -3415,7 +3389,7 @@ with tab9:
                         hovermode='x unified'
                     )
                     apply_plotly_theme(fig_ocorr)
-                    st.plotly_chart(fig_ocorr, use_container_width=True)
+                    st.plotly_chart(fig_ocorr, use_container_width=True, theme=None)
 
                 with col_g2:
                     st.markdown("**📊 Comparação de Cartas**")
@@ -3436,7 +3410,7 @@ with tab9:
                         hovermode='x unified'
                     )
                     apply_plotly_theme(fig_docs)
-                    st.plotly_chart(fig_docs, use_container_width=True)
+                    st.plotly_chart(fig_docs, use_container_width=True, theme=None)
 
                 # Detalhes por termo
                 st.markdown("---")
@@ -3504,10 +3478,7 @@ with tab9:
                                         highlighted = f'<mark style="background-color: {cor}; padding: 2px 4px; border-radius: 3px;">{match_text}</mark>'
                                         texto = texto[:start] + highlighted + texto[end:]
 
-                                    st.markdown(
-                                        f'<div style="background-color: var(--bg-secondary); padding: 12px; border-radius: 4px; border-left: 4px solid {cor}; max-height: 250px; overflow-y: auto; font-size: 13px; color: var(--text-primary);">{texto}</div>',
-                                        unsafe_allow_html=True
-                                    )
+                                    render_letter_text(texto, compact=True, accent=cor)
                                 else:
                                     st.write(carta['texto'][:500] + "..." if len(carta['texto']) > 500 else carta['texto'])
 
@@ -3530,10 +3501,6 @@ with tab9:
 # RODAPÉ
 # ============================================================================
 
-st.markdown("---")
-st.markdown("""
-<div style="text-align: center; color: var(--text-secondary); font-size: 12px; padding: 20px; border-top: 1px solid var(--accent-color); margin-top: 8px;">
-    <p>📚 <strong>Historicidades Democráticas</strong> - Plataforma de Análise de Documentos Históricos</p>
-    <p>Desenvolvido para preservar e analisar correspondências constitucionais</p>
-</div>
-""", unsafe_allow_html=True)
+st.divider()
+st.caption("📚 **Historicidades Democráticas** — Plataforma de Análise de Documentos Históricos")
+st.caption("Desenvolvido para preservar e analisar correspondências constitucionais")

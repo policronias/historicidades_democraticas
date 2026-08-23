@@ -12,6 +12,7 @@ import unicodedata
 from typing import Dict, List, Optional, Tuple, Set
 
 from .stemming_engine import StemmingEngine
+from .config_manager import HIGHLIGHT_PALETTE
 
 
 class StemIndexUnavailable(Exception):
@@ -495,7 +496,7 @@ class SearchEngine:
         self,
         texto: str,
         termo: str,
-        cor: str = "yellow",
+        cor: str = HIGHLIGHT_PALETTE[0],
         case_sensitive: bool = False,
         use_regex: bool = False,
         use_stemming: bool = False

@@ -11,20 +11,22 @@ from typing import Dict, List, Tuple, Set
 class FrequencyAnalyzer:
     """Análise de frequência e estatísticas de termos."""
 
-    # Cores automáticas em sequência (paleta alinhada ao design grafite/âmbar)
+    # Cores automáticas em sequência (paleta alinhada ao tema
+    # claro "Papel de Arquivo" / escuro "Grafite Noturno" — mesma família
+    # brass/terracota/grafite/verde/coral do resto do app)
     COLOR_PALETTE = [
-        "#d97706",  # Âmbar primário
-        "#2b2d33",  # Grafite primário
-        "#f59e0b",  # Âmbar claro
-        "#92400e",  # Marrom âmbar escuro
-        "#45474e",  # Grafite claro
-        "#1f2937",  # Grafite escuro
-        "#b45309",  # Âmbar hover
-        "#5a5c63",  # Cinza-grafite
-        "#dc2626",  # Vermelho sóbrio
-        "#0369a1",  # Azul sóbrio
-        "#65a30d",  # Verde sóbrio
-        "#7c3aed",  # Roxo sóbrio
+        "#c99a5e",  # Brass
+        "#4b4740",  # Grafite quente
+        "#eec98a",  # Brass claro
+        "#8a5a2f",  # Terracota escuro
+        "#6b645a",  # Cinza-grafite claro
+        "#2b2621",  # Grafite escuro
+        "#b8823a",  # Âmbar médio
+        "#9c6b3f",  # Terracota
+        "#c1555c",  # Coral sóbrio
+        "#5b7c99",  # Azul sóbrio
+        "#4f9d6e",  # Verde sóbrio
+        "#9a7bb8",  # Roxo sóbrio
     ]
 
     def __init__(self):

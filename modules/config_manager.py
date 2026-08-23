@@ -54,25 +54,16 @@ MAX_PAGE_SIZE = 50
 # CONFIGURAÇÕES DE UI
 # ============================================================================
 
-# Temas e estilos — Sistema QVR profissional
-COLORS = {
-    'ink': '#0a0e13',
-    'panel': '#141b23',
-    'panel_2': '#1a242e',
-    'line': '#3a4d5c',
-    'text': '#f3efe3',
-    'muted': '#a9b6c2',
-    'brass': '#c99a5e',
-    'brass_bright': '#eec98a',
-    'pass': '#6fc191',
-    'pass_bg': 'rgba(111, 193, 145, 0.16)',
-    'block': '#e2727a',
-    'block_bg': 'rgba(226, 114, 122, 0.16)',
-    'warn': '#e8b563',
-    'shadow_sm': '0 1px 2px rgba(0, 0, 0, 0.35)',
-    'shadow_md': '0 6px 20px rgba(0, 0, 0, 0.4)',
-    'shadow_lg': '0 16px 40px rgba(0, 0, 0, 0.45)',
-}
+# Paleta de destaque (highlight) de termos em texto — usada em Explorar e
+# como default do SearchEngine. Cores fixas (independentes do tema
+# claro/escuro), já que cada <mark> define seu próprio texto/fundo.
+HIGHLIGHT_PALETTE = [
+    '#eec98a',  # brass bright
+    '#e2727a',  # coral
+    '#6fc191',  # verde "pass"
+    '#7dd3fc',  # azul-céu
+    '#c9a4e0',  # violeta suave
+]
 
 # Mensagens padrão
 MESSAGES = {

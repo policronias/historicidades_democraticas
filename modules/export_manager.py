@@ -147,7 +147,6 @@ CHART_SPECS = [
         'cor_hex': '#3b82f6',
         'tipo': 'bar_h',
         'orientacao_html': 'h',
-        'orientacao_pdf': 'h',
     },
     {
         'campo': 'uf',
@@ -157,17 +156,17 @@ CHART_SPECS = [
         'cor_hex': '#1d4ed8',
         'tipo': 'bar_h',
         'orientacao_html': 'h',
-        'orientacao_pdf': 'h',
     },
     {
+        # PDF sempre renderiza horizontal (_gerar_graficos_pdf usa só _make_hbar);
+        # só o HTML varia a orientação por campo.
         'campo': 'faixa_etaria',
         'titulo': 'Distribuição por Faixa Etária',
         'top_n': None,
         'cor_plotly': 'Teal',
         'cor_hex': '#0891b2',
         'tipo': 'bar',
-        'orientacao_html': 'v',  # HTML: vertical
-        'orientacao_pdf': 'h',   # PDF: horizontal (por diferença de layout)
+        'orientacao_html': 'v',
     },
     {
         'campo': 'estado_civil',
@@ -177,7 +176,6 @@ CHART_SPECS = [
         'cor_hex': '#0891b2',
         'tipo': 'bar_h',
         'orientacao_html': 'h',
-        'orientacao_pdf': 'h',
     },
     {
         'campo': 'instrucao',
@@ -187,7 +185,6 @@ CHART_SPECS = [
         'cor_hex': '#059669',
         'tipo': 'bar_h',
         'orientacao_html': 'h',
-        'orientacao_pdf': 'h',
     },
     {
         'campo': 'faixa_renda',
@@ -197,7 +194,6 @@ CHART_SPECS = [
         'cor_hex': '#d97706',
         'tipo': 'bar_h',
         'orientacao_html': 'h',
-        'orientacao_pdf': 'h',
     },
     {
         'campo': 'atividade',
@@ -207,7 +203,6 @@ CHART_SPECS = [
         'cor_hex': '#7c3aed',
         'tipo': 'bar_h',
         'orientacao_html': 'h',
-        'orientacao_pdf': 'h',
     },
     {
         'campo': 'morador',
@@ -217,7 +212,6 @@ CHART_SPECS = [
         'cor_hex': '#059669',
         'tipo': 'bar_h',
         'orientacao_html': 'h',
-        'orientacao_pdf': 'h',
     },
 ]
 
@@ -231,7 +225,6 @@ CHART_SPECS_HTML_ONLY = [
         'cor_hex': '#dc2626',
         'tipo': 'bar',
         'orientacao_html': 'v',
-        'orientacao_pdf': None,
     },
     {
         'campo': 'catalogo',
@@ -241,7 +234,6 @@ CHART_SPECS_HTML_ONLY = [
         'cor_hex': '#6366f1',
         'tipo': 'bar_h',
         'orientacao_html': 'h',
-        'orientacao_pdf': None,
     },
 ]
 

@@ -51,9 +51,9 @@ scripts/
 - ✅ **Cabeçalho da sidebar redesenhado**: ícone + título + botão "🏠 Home" (que chamava `reset_context()`) substituído por título HTML estilizado usando `get_accent_color()`. `reset_context()` ficou sem uso após a mudança e foi removida de `ui_manager.py` e dos exports de `modules/__init__.py`.
 - ✅ **Dead code removido** (2026-08-23): `show_academic_header()`, `show_footer()` e `sidebar_section()` — nunca chamadas em `app.py` — removidas de `ui_manager.py` e dos exports de `modules/__init__.py`.
 
-## 3. As 9 abas da aplicação
+## 3. As abas da aplicação
 
-A interface é organizada em uma área de **Busca Avançada + Navegação por ID** (fora das abas, sempre visível) e 9 abas (`st.tabs`):
+A interface tem uma aba **🏠 Início** (página de entrada com a logomarca Policronias e cartões que abrem cada aba) seguida de 9 abas de trabalho (`st.tabs`). A **Busca Avançada + "Ir para Carta" + histórico** ficam dentro da aba 🔍 Explorar Cartas (`render_explorar_search_tools()`), não mais acima das abas:
 
 | # | Aba | Arquivo/linhas | Função |
 |---|-----|-----------------|--------|

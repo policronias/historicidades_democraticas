@@ -99,6 +99,50 @@ _CHART_THEME = {
 }
 
 
+# ── Identidade "Policronias do presente" ────────────────────────────────
+# Paleta de marca do tema ativo, espelhando .streamlit/config.toml.
+# Claro = "papel de arquivo"; escuro = paleta reversa Policronias.
+_BRAND_PALETTE = {
+    "light": {
+        "paper": "#f1ede2", "card": "#f8f5ec", "ink": "#1b1815",
+        "ink_soft": "#56514a", "stamp": "#9c3a26", "moss": "#5c6a4c",
+        "thread": "#cdc4ae",
+    },
+    "dark": {
+        "paper": "#1b1815", "card": "#252019", "ink": "#c9c2b0",
+        "ink_soft": "#9c8f7d", "stamp": "#d97a5e", "moss": "#9aa886",
+        "thread": "#3a352d",
+    },
+}
+
+
+def get_brand_palette() -> dict:
+    """Cores da identidade Policronias para o tema claro/escuro ativo."""
+    return _BRAND_PALETTE[_current_theme_mode()]
+
+
+def policronias_mark_svg(px: int = 120) -> str:
+    """
+    Símbolo da marca "Policronias do presente" — três círculos concêntricos
+    deslocados (tinta / selo / musgo), única forma circular do sistema.
+
+    O anel de tinta usa ``currentColor`` (herda a cor de texto real do tema
+    ativo, sem depender de st.context.theme); selo e musgo vêm da paleta de
+    marca. Renderizado sobre fundo transparente — sem moldura.
+    """
+    c = get_brand_palette()
+    return (
+        f'<svg width="{px}" height="{px}" viewBox="0 0 106 100" fill="none" '
+        f'xmlns="http://www.w3.org/2000/svg" role="img" '
+        f'aria-label="Símbolo Policronias do presente" '
+        f'style="display:block;margin:0 auto">'
+        f'<circle cx="50" cy="50" r="47.5" stroke="currentColor" stroke-width="5"/>'
+        f'<circle cx="68" cy="48" r="33.5" stroke="{c["stamp"]}" stroke-width="5"/>'
+        f'<circle cx="30" cy="62" r="23.25" stroke="{c["moss"]}" stroke-width="3.5"/>'
+        f'</svg>'
+    )
+
+
 def get_accent_color() -> str:
     """
     Retorna a cor de destaque (accent) do tema claro/escuro ativo, em hex.

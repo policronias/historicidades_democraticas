@@ -6,6 +6,7 @@ Plataforma **Historicidades Democráticas** — análise, busca semântica e arq
 
 | # | Aba | Função |
 |---|-----|--------|
+| 0 | 🏠 Início | Página de entrada: logomarca Policronias + cartões que descrevem e abrem cada aba |
 | 1 | 🔍 Explorar | Navegação por ID, busca avançada, highlight de termos |
 | 2 | 📓 Caderno | Anotações por carta + caderno de pesquisa livre |
 | 3 | 🗂️ Séries | Criar/editar séries temáticas, adicionar cartas |
@@ -45,6 +46,8 @@ Plataforma **Historicidades Democráticas** — análise, busca semântica e arq
 - **Redução de `app.py`** — 3378 → 3281 linhas (-97); cache e UI modulares; melhor separação de responsabilidades
 
 ### Lógica de Negócio
+- **Aba "🏠 Início"** (primeira, `tab_home` em `app.py`) — página de entrada com a logomarca Policronias (`policronias_mark_svg()`, símbolo dos três círculos; anel de tinta usa `currentColor` p/ herdar o tema real) e 9 cartões (`TAB_FEATURES`) que descrevem e abrem cada aba. **Navegação entre abas**: `st.tabs(TAB_LABELS, key="main_tabs", on_change="rerun")` + callback `_goto_tab(label)` que faz `st.session_state.main_tabs = label`. `on_change="rerun"` habilita o rastreio de estado das abas (necessário p/ controle programático) mas **não** desliga a execução dos corpos das abas ocultas — todos os `with tabN:` continuam rodando como antes. Ao adicionar/renomear/reordenar abas, manter `TAB_LABELS`, `TAB_FEATURES` e o desempacotamento `tab_home, tab1..tab9` em sincronia (índice `i` de `TAB_FEATURES` → `TAB_LABELS[i+1]`).
+- **Busca Avançada + "Ir para Carta" + Histórico de Buscas** vivem em `render_explorar_search_tools()` (função de nível de módulo) e são chamadas **só dentro de `with tab1:`** (Explorar Cartas). Antes ficavam soltas acima de `st.tabs()`, visíveis em todas as abas. A função lê globais de módulo (`dm`, `se`, `stem_e`, `_todas_cartas`, helpers de cache) e só escreve em `st.session_state.*` — nenhum outro trecho depende das variáveis locais dela (`ids_resultado`, `termo_busca`, `form_submit`, …).
 - **Sidebar "Gerenciar Séries"** é compartilhada entre abas 1, 7 e 8 via `sidebar_series_context` no session state. Não duplicar lógica de séries por aba.
 - **Cabeçalho da sidebar não tem mais botão Home** — removido de propósito no redesign do tema nativo (2026-08-23); `reset_context()` foi removido de `ui_manager.py` por ter ficado sem uso.
 - **PDF usa matplotlib** para gráficos embutidos — reportlab não suporta Plotly. Gráficos HTML e PDF são gerados por caminhos distintos em `export_manager.py`.

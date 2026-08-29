@@ -45,6 +45,8 @@ from modules.config_manager import EMBEDDING_MODEL, HIGHLIGHT_PALETTE
 from modules.ui_manager import (
     configure_page_style,
     get_accent_color,
+    get_brand_palette,
+    policronias_mark_svg,
     get_plotly_color_palette,
     get_plotly_sequential_scale,
     breadcrumb_nav,
@@ -521,253 +523,256 @@ with st.sidebar:
 
 
 # ============================================================================
-# BUSCA AVANÇADA - FORA DAS ABAS
+# FERRAMENTAS DE BUSCA DO EXPLORADOR
+# Renderizadas dentro da aba "🔍 Explorar Cartas" (antes ficavam acima das
+# abas, visíveis em todas). Busca avançada + "Ir para Carta" + histórico.
 # ============================================================================
 
-st.header("🔎 Busca Avançada")
+def render_explorar_search_tools():
+    st.header("🔎 Busca Avançada")
 
-# Tooltip com instruções de busca
-with st.expander("ℹ️ Como usar a busca avançada"):
-    st.markdown("""
-    **Operadores disponíveis:**
-    - **Aspas duplas**: `"frase exata"` → busca pela frase exatamente como escrita
-    - **Plus (+)**: `+termo` → termo é obrigatório (deve estar presente)
-    - **Menos (-)**: `-termo` → termo será excluído dos resultados
-    - **Asterisco (*)**: `termin*` → encontra qualquer palavra que comece com "termin"
+    # Tooltip com instruções de busca
+    with st.expander("ℹ️ Como usar a busca avançada"):
+        st.markdown("""
+        **Operadores disponíveis:**
+        - **Aspas duplas**: `"frase exata"` → busca pela frase exatamente como escrita
+        - **Plus (+)**: `+termo` → termo é obrigatório (deve estar presente)
+        - **Menos (-)**: `-termo` → termo será excluído dos resultados
+        - **Asterisco (*)**: `termin*` → encontra qualquer palavra que comece com "termin"
 
-    **Exemplos:**
-    - `"direitos sociais"` → busca pela frase exata
-    - `+constituição -república` → deve conter "constituição", mas não "república"
-    - `educ* liberdade` → encontra "educação", "educador", etc. E/ou "liberdade"
-    - `"voto universal" +mulher` → frase exata + termo obrigatório
-    """)
+        **Exemplos:**
+        - `"direitos sociais"` → busca pela frase exata
+        - `+constituição -república` → deve conter "constituição", mas não "república"
+        - `educ* liberdade` → encontra "educação", "educador", etc. E/ou "liberdade"
+        - `"voto universal" +mulher` → frase exata + termo obrigatório
+        """)
 
-with st.form("search_form"):
-    col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
+    with st.form("search_form"):
+        col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
 
-    with col1:
-        termo_busca = st.text_input("Digite o termo ou expressão a buscar:", key="search_term")
+        with col1:
+            termo_busca = st.text_input("Digite o termo ou expressão a buscar:", key="search_term")
 
-    with col2:
-        tipo_busca = st.radio(
-            "Tipo:",
-            ["Simples", "Variações"],
-            index=1,
-            horizontal=True
-        )
-
-    with col3:
-        escopo_busca = st.radio(
-            "Escopo:",
-            ["Somente Texto", "Base Inteira"],
-            horizontal=True,
-            index=0 if st.session_state.search_scope == "Somente Texto" else 1
-        )
-
-    with col4:
-        case_sensitive = st.checkbox("Case-sensitive", value=False, key="case_sens")
-        st.session_state.highlight_active = st.checkbox(
-            "Destacar termos", value=st.session_state.highlight_active, key="highlight_toggle"
-        )
-
-    form_submit = st.form_submit_button("🔍 Buscar", use_container_width=True)
-
-# Executar busca quando submit
-if form_submit and termo_busca:
-    st.session_state.search_scope = escopo_busca
-    st.session_state.search_tipo = tipo_busca
-    _search_key = (termo_busca, tipo_busca, escopo_busca, case_sensitive)
-    _query_key = f"advanced_{termo_busca}_{tipo_busca}_{escopo_busca}_{case_sensitive}"
-
-    # Tentar recuperar do cache
-    _cached = get_cached_search(_query_key)
-    if _cached:
-        # Handle both dict (advanced search) and list (semantic search) cache types
-        _cache_count = len(_cached['ids']) if isinstance(_cached, dict) else len(_cached)
-        FeedbackManager.success(f"✅ Cache: {_cache_count} cartas encontradas")
-        ids_resultado, ocorrencias = _cached['ids'], _cached['ocorrencias']
-    elif _search_key != st.session_state.get('_last_search_key'):
-        if escopo_busca == "Somente Texto":
-            search_fields = {'texto'}
-        else:
-            search_fields = {'texto', 'nome', 'destinatario', 'catalogo', 'indexacao', 'origem'}
-
-        _use_variations = (tipo_busca == "Variações")
-        _stem_index = None
-        _erro_busca = None
-
-        if _use_variations:
-            try:
-                _stem_index = stem_e.load_index(_todas_cartas, dm.current_database_name)
-            except FileNotFoundError as _e:
-                _erro_busca = str(_e)
-
-        if _erro_busca:
-            st.error(f"❌ {_erro_busca}")
-            ids_resultado, ocorrencias = [], {}
-        else:
-            # OTIMIZAÇÃO Phase 1: Cache de busca avançada
-            # Chave inclui: db_name, termo, case_sensitive, use_variations, search_fields
-            _engine_cache_key = get_search_engine_cache_key(
-                dm.current_database_name,
-                'advanced',
-                f"{termo_busca}:{_use_variations}:{case_sensitive}:{','.join(sorted(search_fields))}"
+        with col2:
+            tipo_busca = st.radio(
+                "Tipo:",
+                ["Simples", "Variações"],
+                index=1,
+                horizontal=True
             )
-            _cached_engine_result = get_cached_engine_search(_engine_cache_key)
 
-            if _cached_engine_result:
-                # Cache hit: usar resultado cacheado
-                ids_resultado, ocorrencias = _cached_engine_result
-                FeedbackManager.success(f"✅ Cache: {len(ids_resultado)} resultados encontrados")
+        with col3:
+            escopo_busca = st.radio(
+                "Escopo:",
+                ["Somente Texto", "Base Inteira"],
+                horizontal=True,
+                index=0 if st.session_state.search_scope == "Somente Texto" else 1
+            )
+
+        with col4:
+            case_sensitive = st.checkbox("Case-sensitive", value=False, key="case_sens")
+            st.session_state.highlight_active = st.checkbox(
+                "Destacar termos", value=st.session_state.highlight_active, key="highlight_toggle"
+            )
+
+        form_submit = st.form_submit_button("🔍 Buscar", use_container_width=True)
+
+    # Executar busca quando submit
+    if form_submit and termo_busca:
+        st.session_state.search_scope = escopo_busca
+        st.session_state.search_tipo = tipo_busca
+        _search_key = (termo_busca, tipo_busca, escopo_busca, case_sensitive)
+        _query_key = f"advanced_{termo_busca}_{tipo_busca}_{escopo_busca}_{case_sensitive}"
+
+        # Tentar recuperar do cache
+        _cached = get_cached_search(_query_key)
+        if _cached:
+            # Handle both dict (advanced search) and list (semantic search) cache types
+            _cache_count = len(_cached['ids']) if isinstance(_cached, dict) else len(_cached)
+            FeedbackManager.success(f"✅ Cache: {_cache_count} cartas encontradas")
+            ids_resultado, ocorrencias = _cached['ids'], _cached['ocorrencias']
+        elif _search_key != st.session_state.get('_last_search_key'):
+            if escopo_busca == "Somente Texto":
+                search_fields = {'texto'}
             else:
-                # Cache miss: executar busca e guardar em cache
+                search_fields = {'texto', 'nome', 'destinatario', 'catalogo', 'indexacao', 'origem'}
+
+            _use_variations = (tipo_busca == "Variações")
+            _stem_index = None
+            _erro_busca = None
+
+            if _use_variations:
                 try:
-                    ids_resultado, ocorrencias = se.search_advanced(
-                        _todas_cartas,
-                        termo_busca,
-                        case_sensitive=case_sensitive,
-                        use_variations=_use_variations,
-                        search_fields=search_fields,
-                        stem_index=_stem_index
-                    )
-                    # Guardar em cache (session_state)
-                    cache_engine_search_result(_engine_cache_key, (ids_resultado, ocorrencias))
-                    # Também guardar na forma antiga para compatibilidade
-                    cache_search_result(_query_key, {'ids': ids_resultado, 'ocorrencias': ocorrencias})
-                except RuntimeError as _e:
-                    st.error(f"❌ {_e}")
-                    ids_resultado, ocorrencias = [], {}
+                    _stem_index = stem_e.load_index(_todas_cartas, dm.current_database_name)
+                except FileNotFoundError as _e:
+                    _erro_busca = str(_e)
 
-        if '*' in termo_busca:
-            wildcart_pattern = termo_busca.replace("*", r"\w*")
-            regex_pat = rf'\b{wildcart_pattern}\b'
-            st.session_state.highlighted_terms = [regex_pat]
-            st.session_state.highlight_use_regex = True
-            st.session_state.highlight_use_stemming = False
-            st.session_state.wildcard_matches = se.get_wildcard_matches(
-                _todas_cartas, termo_busca, case_sensitive
+            if _erro_busca:
+                st.error(f"❌ {_erro_busca}")
+                ids_resultado, ocorrencias = [], {}
+            else:
+                # OTIMIZAÇÃO Phase 1: Cache de busca avançada
+                # Chave inclui: db_name, termo, case_sensitive, use_variations, search_fields
+                _engine_cache_key = get_search_engine_cache_key(
+                    dm.current_database_name,
+                    'advanced',
+                    f"{termo_busca}:{_use_variations}:{case_sensitive}:{','.join(sorted(search_fields))}"
+                )
+                _cached_engine_result = get_cached_engine_search(_engine_cache_key)
+
+                if _cached_engine_result:
+                    # Cache hit: usar resultado cacheado
+                    ids_resultado, ocorrencias = _cached_engine_result
+                    FeedbackManager.success(f"✅ Cache: {len(ids_resultado)} resultados encontrados")
+                else:
+                    # Cache miss: executar busca e guardar em cache
+                    try:
+                        ids_resultado, ocorrencias = se.search_advanced(
+                            _todas_cartas,
+                            termo_busca,
+                            case_sensitive=case_sensitive,
+                            use_variations=_use_variations,
+                            search_fields=search_fields,
+                            stem_index=_stem_index
+                        )
+                        # Guardar em cache (session_state)
+                        cache_engine_search_result(_engine_cache_key, (ids_resultado, ocorrencias))
+                        # Também guardar na forma antiga para compatibilidade
+                        cache_search_result(_query_key, {'ids': ids_resultado, 'ocorrencias': ocorrencias})
+                    except RuntimeError as _e:
+                        st.error(f"❌ {_e}")
+                        ids_resultado, ocorrencias = [], {}
+
+            if '*' in termo_busca:
+                wildcart_pattern = termo_busca.replace("*", r"\w*")
+                regex_pat = rf'\b{wildcart_pattern}\b'
+                st.session_state.highlighted_terms = [regex_pat]
+                st.session_state.highlight_use_regex = True
+                st.session_state.highlight_use_stemming = False
+                st.session_state.wildcard_matches = se.get_wildcard_matches(
+                    _todas_cartas, termo_busca, case_sensitive
+                )
+            elif _use_variations:
+                st.session_state.highlighted_terms = [termo_busca] if ids_resultado else []
+                st.session_state.highlight_use_regex = False
+                st.session_state.highlight_use_stemming = True
+                st.session_state.wildcard_matches = {}
+                st.session_state._last_variacoes = (
+                    se.get_variacoes_info(termo_busca, _stem_index) if _stem_index else [termo_busca]
+                )
+            else:
+                st.session_state.highlighted_terms = [termo_busca]
+                st.session_state.highlight_use_regex = False
+                st.session_state.highlight_use_stemming = False
+                st.session_state.wildcard_matches = {}
+
+            st.session_state.search_results = ids_resultado
+            st.session_state._last_ocorrencias = ocorrencias
+            st.session_state._last_search_key = _search_key
+
+            if ids_resultado and st.session_state.current_carta_id not in ids_resultado:
+                st.session_state.current_carta_id = ids_resultado[0]
+                st.rerun()
+
+    # Exibir resultados (mesmo sem novo submit)
+    ids_resultado = st.session_state.get('search_results', [])
+    ocorrencias = st.session_state.get('_last_ocorrencias', {})
+
+    if ids_resultado:
+        # ========== MÉTRICAS ==========
+        col_a, col_b = st.columns(2)
+        col_a.metric("Total encontrado", len(ids_resultado))
+        col_b.metric("Escopo", st.session_state.search_scope)
+
+
+        # Mostrar variações quando usando "Variações" (calculado no momento da busca
+        # e cacheado em session_state -- evita recarregar o índice de stems a cada rerun)
+        tipo_busca_atual = st.session_state.get('search_tipo', 'Variações')
+        if tipo_busca_atual == "Variações" and st.session_state.search_results:
+            variacoes = st.session_state.get('_last_variacoes', [])
+            if len(variacoes) > 1:
+                st.caption(f"**Variações encontradas:** {' | '.join(variacoes)}")
+
+        # Mostrar termos capturados por wildcard
+        if st.session_state.wildcard_matches:
+            n_formas = len(st.session_state.wildcard_matches)
+            with st.expander(f"🔍 Termos capturados pelo wildcard ({n_formas} formas distintas)"):
+                wc_df = pd.DataFrame(
+                    sorted(st.session_state.wildcard_matches.items(), key=lambda x: -x[1]),
+                    columns=['Termo', 'Frequência']
+                )
+                st.dataframe(wc_df, use_container_width=True, hide_index=True, height=200)
+
+        # Botão para limpar filtro
+        with st.form("clear_filter_form"):
+            if st.form_submit_button("🔄 Limpar Filtro", use_container_width=True):
+                st.session_state.highlighted_terms = []
+                st.session_state.search_results = []
+                st.session_state.wildcard_matches = {}
+                st.session_state.highlight_use_regex = False
+                st.session_state.highlight_use_stemming = False
+                st.session_state._last_search_key = None
+                st.rerun()
+    elif form_submit:
+        st.warning("❌ Nenhuma carta encontrada para este termo.")
+
+    st.markdown("---")
+
+    # ------------------------------------------------------------------------
+    # NAVEGAÇÃO RÁPIDA POR ID
+    # ------------------------------------------------------------------------
+
+    st.subheader("🎯 Ir para Carta")
+
+    with st.form("go_to_id_form"):
+        col_id_input, col_id_btn = st.columns([3, 1])
+
+        with col_id_input:
+            id_input = st.text_input(
+                "Digite o ID da carta:",
+                placeholder="Ex: 1, 42, 100",
+                key="direct_id_input"
             )
-        elif _use_variations:
-            st.session_state.highlighted_terms = [termo_busca] if ids_resultado else []
-            st.session_state.highlight_use_regex = False
-            st.session_state.highlight_use_stemming = True
-            st.session_state.wildcard_matches = {}
-            st.session_state._last_variacoes = (
-                se.get_variacoes_info(termo_busca, _stem_index) if _stem_index else [termo_busca]
-            )
+
+        with col_id_btn:
+            form_submit_id = st.form_submit_button("🔗 Ir", use_container_width=True)
+
+    if form_submit_id:
+        if id_input.strip():
+            todas_ids = dm.get_ids_cartas()
+            # OTIMIZAÇÃO: Cache string IDs set para lookup O(1)
+            _ids_set_key = hash(tuple(sorted(todas_ids)))
+            if st.session_state.get('_ids_set_key') != _ids_set_key:
+                st.session_state._ids_set = {str(id) for id in todas_ids}
+                st.session_state._ids_set_key = _ids_set_key
+            # Converter para string para garantir compatibilidade com tipos
+            id_input_str = str(id_input.strip())
+            if id_input_str in st.session_state._ids_set:
+                st.session_state.current_carta_id = id_input_str
+                st.success(f"✅ Navegando para carta #{id_input_str}!")
+                st.rerun()
+            else:
+                st.error(f"❌ Carta #{id_input_str} não encontrada na base de dados.")
         else:
-            st.session_state.highlighted_terms = [termo_busca]
-            st.session_state.highlight_use_regex = False
-            st.session_state.highlight_use_stemming = False
-            st.session_state.wildcard_matches = {}
+            st.warning("⚠️ Digite um ID para buscar.")
 
-        st.session_state.search_results = ids_resultado
-        st.session_state._last_ocorrencias = ocorrencias
-        st.session_state._last_search_key = _search_key
+    # ------------------------------------------------------------------------
+    # HISTÓRICO DE BUSCAS
+    # ------------------------------------------------------------------------
 
-        if ids_resultado and st.session_state.current_carta_id not in ids_resultado:
-            st.session_state.current_carta_id = ids_resultado[0]
-            st.rerun()
-
-# Exibir resultados (mesmo sem novo submit)
-ids_resultado = st.session_state.get('search_results', [])
-ocorrencias = st.session_state.get('_last_ocorrencias', {})
-
-if ids_resultado:
-    # ========== MÉTRICAS ==========
-    col_a, col_b = st.columns(2)
-    col_a.metric("Total encontrado", len(ids_resultado))
-    col_b.metric("Escopo", st.session_state.search_scope)
-
-
-    # Mostrar variações quando usando "Variações" (calculado no momento da busca
-    # e cacheado em session_state -- evita recarregar o índice de stems a cada rerun)
-    tipo_busca_atual = st.session_state.get('search_tipo', 'Variações')
-    if tipo_busca_atual == "Variações" and st.session_state.search_results:
-        variacoes = st.session_state.get('_last_variacoes', [])
-        if len(variacoes) > 1:
-            st.caption(f"**Variações encontradas:** {' | '.join(variacoes)}")
-
-    # Mostrar termos capturados por wildcard
-    if st.session_state.wildcard_matches:
-        n_formas = len(st.session_state.wildcard_matches)
-        with st.expander(f"🔍 Termos capturados pelo wildcard ({n_formas} formas distintas)"):
-            wc_df = pd.DataFrame(
-                sorted(st.session_state.wildcard_matches.items(), key=lambda x: -x[1]),
-                columns=['Termo', 'Frequência']
-            )
-            st.dataframe(wc_df, use_container_width=True, hide_index=True, height=200)
-
-    # Botão para limpar filtro
-    with st.form("clear_filter_form"):
-        if st.form_submit_button("🔄 Limpar Filtro", use_container_width=True):
-            st.session_state.highlighted_terms = []
-            st.session_state.search_results = []
-            st.session_state.wildcard_matches = {}
-            st.session_state.highlight_use_regex = False
-            st.session_state.highlight_use_stemming = False
-            st.session_state._last_search_key = None
-            st.rerun()
-elif form_submit:
-    st.warning("❌ Nenhuma carta encontrada para este termo.")
-
-st.markdown("---")
-
-# ============================================================================
-# NAVEGAÇÃO RÁPIDA POR ID
-# ============================================================================
-
-st.subheader("🎯 Ir para Carta")
-
-with st.form("go_to_id_form"):
-    col_id_input, col_id_btn = st.columns([3, 1])
-
-    with col_id_input:
-        id_input = st.text_input(
-            "Digite o ID da carta:",
-            placeholder="Ex: 1, 42, 100",
-            key="direct_id_input"
-        )
-
-    with col_id_btn:
-        form_submit_id = st.form_submit_button("🔗 Ir", use_container_width=True)
-
-if form_submit_id:
-    if id_input.strip():
-        todas_ids = dm.get_ids_cartas()
-        # OTIMIZAÇÃO: Cache string IDs set para lookup O(1)
-        _ids_set_key = hash(tuple(sorted(todas_ids)))
-        if st.session_state.get('_ids_set_key') != _ids_set_key:
-            st.session_state._ids_set = {str(id) for id in todas_ids}
-            st.session_state._ids_set_key = _ids_set_key
-        # Converter para string para garantir compatibilidade com tipos
-        id_input_str = str(id_input.strip())
-        if id_input_str in st.session_state._ids_set:
-            st.session_state.current_carta_id = id_input_str
-            st.success(f"✅ Navegando para carta #{id_input_str}!")
-            st.rerun()
+    with st.expander("📜 Histórico de Buscas Recentes"):
+        if st.session_state.search_history and len(st.session_state.search_history) > 0:
+            st.caption(f"Últimas {min(10, len(st.session_state.search_history))} buscas:")
+            for h in reversed(st.session_state.search_history[-10:]):
+                col_btn, col_info = st.columns([3, 1])
+                with col_btn:
+                    if st.button(f"🔍 {h['query'][:50]}", key=f"history_{h['query']}"):
+                        st.session_state.search_termo = h['query'].split('_')[0]  # Extrair termo da chave
+                        st.rerun()
+                with col_info:
+                    st.caption(f"{h.get('count', 0)} resultados")
         else:
-            st.error(f"❌ Carta #{id_input_str} não encontrada na base de dados.")
-    else:
-        st.warning("⚠️ Digite um ID para buscar.")
-
-# ============================================================================
-# HISTÓRICO DE BUSCAS
-# ============================================================================
-
-with st.expander("📜 Histórico de Buscas Recentes"):
-    if st.session_state.search_history and len(st.session_state.search_history) > 0:
-        st.caption(f"Últimas {min(10, len(st.session_state.search_history))} buscas:")
-        for h in reversed(st.session_state.search_history[-10:]):
-            col_btn, col_info = st.columns([3, 1])
-            with col_btn:
-                if st.button(f"🔍 {h['query'][:50]}", key=f"history_{h['query']}"):
-                    st.session_state.search_termo = h['query'].split('_')[0]  # Extrair termo da chave
-                    st.rerun()
-            with col_info:
-                st.caption(f"{h.get('count', 0)} resultados")
-    else:
-        st.caption("Nenhuma busca anterior ainda")
+            st.caption("Nenhuma busca anterior ainda")
 
 
 # ============================================================================
@@ -780,7 +785,8 @@ if not st.session_state.series_list_cache_valid:
     st.session_state.series_list_cache_valid = True
 _todas_series = st.session_state.series_list_cache
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
+TAB_LABELS = [
+    "🏠 Início",
     "🔍 Explorar Cartas",
     "📓 Caderno",
     "🗂️ Séries Temáticas",
@@ -789,8 +795,123 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
     "📊 Gráficos e Tabelas",
     "🎯 Filtros",
     "🧠 Busca Semântica",
-    "📈 Análise de Frequência"
-])
+    "📈 Análise de Frequência",
+]
+
+# Descrição de cada funcionalidade — usada na página inicial (aba "Início").
+# (emoji, título, descrição curta) na mesma ordem de TAB_LABELS[1:].
+TAB_FEATURES = [
+    ("🔍", "Explorar Cartas",
+     "Navegue carta a carta por ID e faça buscas avançadas com operadores "
+     "(`\"frase\"`, `+obrigatório`, `-excluir`, `radical*`), lendo os textos "
+     "com os termos destacados."),
+    ("📓", "Caderno",
+     "Registre anotações vinculadas a cada carta e mantenha um caderno de "
+     "pesquisa livre — tudo salvo na sessão de trabalho."),
+    ("🗂️", "Séries Temáticas",
+     "Crie e edite coleções temáticas de cartas, agrupando as fontes por "
+     "eixo de análise e adicionando-as a partir de qualquer aba."),
+    ("📥", "Exportar",
+     "Exporte resultados de busca, uma série ou a base inteira em CSV, JSON, "
+     "Parquet, HTML, PDF ou um ZIP unificado."),
+    ("⚙️", "Configurações",
+     "Carregue ou troque a base de dados ativa e converta planilhas "
+     "XLSX/CSV para o formato JSON do painel."),
+    ("📊", "Gráficos e Tabelas",
+     "Visualize a composição demográfica e geográfica dos remetentes em "
+     "gráficos Plotly interativos, com tabelas de apoio."),
+    ("🎯", "Filtros",
+     "Filtre as cartas por várias dimensões ao mesmo tempo — sexo, UF, "
+     "faixa etária, faixa de renda, escolaridade, atividade e mais."),
+    ("🧠", "Busca Semântica",
+     "Encontre cartas por proximidade de sentido usando embeddings "
+     "multilíngues (RoBERTa), mesmo sem palavras em comum com a consulta."),
+    ("📈", "Análise de Frequência",
+     "Compare a frequência de vários termos ou radicais ao longo de toda a "
+     "base, com contagem de ocorrências e visualização."),
+]
+
+
+def _goto_tab(label: str):
+    """Callback dos cartões da página inicial: muda a aba ativa."""
+    st.session_state.main_tabs = label
+
+
+tab_home, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs(
+    TAB_LABELS, key="main_tabs", on_change="rerun"
+)
+
+
+# ============================================================================
+# ABA INICIAL: PÁGINA DE ENTRADA
+# ============================================================================
+
+with tab_home:
+    _bp = get_brand_palette()
+
+    _total_cartas_home = len(dm.get_ids_cartas())
+    _n_series_home = len(_todas_series)
+    _total_cartas_fmt = f"{_total_cartas_home:,}".replace(",", ".")
+
+    # Hero — símbolo da marca sobre fundo chapado (sem moldura), wordmark e
+    # metadados. Cores herdadas do tema real (currentColor / opacity) para
+    # não destoar caso st.context.theme fique indefinido num rerun.
+    st.markdown(
+        f"""
+        <div style="text-align:center; padding:8px 0 4px;">
+          <div style="padding:8px 0 4px;">{policronias_mark_svg(116)}</div>
+          <div style="font-family:'Newsreader',Georgia,serif; font-weight:500;
+                      font-style:italic; font-size:2.5rem; line-height:1.1;
+                      margin-top:18px; color:{_bp['stamp']};">
+            Policronias
+            <span style="font-weight:400; color:inherit; opacity:0.55;">do presente</span>
+          </div>
+          <div style="font-family:'Newsreader',Georgia,serif; font-size:1.2rem;
+                      margin-top:6px; opacity:0.9;">
+            Painel Historicidades Democráticas
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:0.8rem;
+                      letter-spacing:0.04em; margin-top:14px; opacity:0.65;">
+            {_total_cartas_fmt} cartas &middot; {_n_series_home} séries temáticas
+            &middot; Base SAIC &middot; 1986–1988
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        "<div style='max-width:720px; margin:20px auto 0; text-align:center; "
+        "opacity:0.8; line-height:1.6;'>"
+        "Plataforma de análise, busca semântica e arquivamento das sugestões "
+        "enviadas por cidadãos ao processo constituinte de 1987–1988. "
+        "Escolha abaixo por onde começar — cada cartão abre a aba correspondente."
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+    st.subheader("Funcionalidades")
+
+    for _row_start in range(0, len(TAB_FEATURES), 3):
+        _cols = st.columns(3, gap="medium")
+        for _offset, _col in enumerate(_cols):
+            _idx = _row_start + _offset
+            if _idx >= len(TAB_FEATURES):
+                break
+            _emoji, _titulo, _desc = TAB_FEATURES[_idx]
+            _target_label = TAB_LABELS[_idx + 1]  # +1: TAB_LABELS[0] é "🏠 Início"
+            with _col:
+                with st.container(border=True):
+                    st.markdown(f"#### {_emoji} {_titulo}")
+                    st.markdown(_desc)
+                    st.button(
+                        "Abrir →",
+                        key=f"home_goto_{_idx}",
+                        on_click=_goto_tab,
+                        args=(_target_label,),
+                        use_container_width=True,
+                    )
 
 
 # ============================================================================
@@ -800,6 +921,10 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
 with tab1:
     st.header("🔍 Explorador de Cartas")
     breadcrumb_nav("Home", "Explorador de Cartas")
+
+    # Busca avançada + "Ir para Carta" + histórico (só nesta aba)
+    render_explorar_search_tools()
+    st.markdown("---")
 
     # Seção de navegação
     st.subheader("📍 Navegação")

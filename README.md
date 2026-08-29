@@ -4,6 +4,10 @@ Plataforma completa de análise de documentos históricos construída com **Stre
 
 ## 🎯 Características Principais
 
+### 0. **Página Inicial (aba 🏠 Início)**
+- Logomarca do projeto **Policronias do presente** (símbolo dos três círculos) em destaque
+- Cartão para cada funcionalidade, com descrição curta e botão que abre a aba correspondente
+
 ### 1. **Navegação e Busca Avançada**
 - Busca por texto com operadores: `"frase exata"`, `+obrigatório`, `-exclusão`, `termo*` (wildcard)
 - Busca Simples ou com Variações Lexicais
@@ -107,7 +111,7 @@ A aplicação será aberta em `http://localhost:8501`
    - Metadados completos + anotações
    - Série de cartas em contexto de busca
 
-2. **Busca Avançada** (Acima das abas)
+2. **Busca Avançada** (dentro da aba 🔍 Explorar Cartas)
    - Operadores: `"frase"`, `+termo`, `-exclusão`, `termo*`
    - Tipo: Simples ou Variações
    - Escopo: Texto ou Base Inteira
@@ -286,7 +290,7 @@ Em `modules/search_engine.py`, adicione ao dicionário `LEXICAL_VARIATIONS`:
 ## 📊 Exemplos de Uso
 
 ### Busca Avançada por Educação
-1. Na busca avançada (acima das abas)
+1. Na aba 🔍 Explorar Cartas, seção "Busca Avançada"
 2. Digite: `+educação -escravatura`
 3. Selecione "Variações" (encontra: educação, educador, educativo...)
 4. Resultados aparecem filtrados + destaque automático no texto

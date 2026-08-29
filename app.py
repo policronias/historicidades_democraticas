@@ -52,7 +52,7 @@ from modules.ui_manager import (
     format_pie_labels,
     render_letter_text,
 )
-from modules.memory_monitor import display_memory_monitor
+from modules.memory_monitor import display_memory_monitor, get_available_system_memory_mb
 
 
 # ============================================================================
@@ -945,26 +945,6 @@ with tab1:
                 render_letter_text(texto_destacado)
             else:
                 render_letter_text(texto)
-
-            # Anotações da Carta
-            st.markdown("---")
-            st.subheader("📌 Anotações da Carta")
-
-            anotacao_atual = am.get_anotacao(st.session_state.current_carta_id)
-
-            nova_anotacao = st.text_area(
-                "Escreva suas anotações:",
-                value=anotacao_atual,
-                height=100,
-                key="anotacao_area_explorar"
-            )
-
-            if nova_anotacao != anotacao_atual:
-                am.set_anotacao(
-                    st.session_state.current_carta_id,
-                    nova_anotacao
-                )
-                st.success("💾 Anotação salva!")
 
             # Metadados - Apresentação compacta
             st.markdown("---")
@@ -2825,6 +2805,18 @@ with tab8:
     st.markdown("---")
 
     _cache_valido = _status_sem['cache_valido']
+
+    # Aviso de memória baixa: carregar o modelo RoBERTa (~420MB) e os
+    # embeddings (~200MB) pode causar um segmentation fault (crash do
+    # processo, não capturável como exceção Python) se o sistema estiver
+    # com pouca RAM livre. Avisar antes é a única mitigação possível.
+    _mem_disponivel_mb = get_available_system_memory_mb()
+    if _mem_disponivel_mb is not None and _mem_disponivel_mb < 1024:
+        st.warning(
+            f"⚠️ **Memória disponível baixa** ({_mem_disponivel_mb:.0f} MB livres). "
+            "Carregar o modelo RoBERTa e os embeddings pode travar o aplicativo. "
+            "Feche outros programas/abas antes de pré-computar ou buscar."
+        )
 
     if _cache_valido:
         st.success(

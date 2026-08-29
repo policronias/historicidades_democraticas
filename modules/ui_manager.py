@@ -163,8 +163,8 @@ def apply_plotly_theme(fig):
         showlegend=True,
         legend=dict(x=1.0, y=1.0, bgcolor=theme['legend_bg'], bordercolor=theme['legend_border'], borderwidth=1)
     )
-    fig.update_xaxes(showgrid=theme['xaxis']['showgrid'], gridwidth=theme['xaxis']['gridwidth'], gridcolor=theme['xaxis']['gridcolor'])
-    fig.update_yaxes(showgrid=theme['yaxis']['showgrid'], gridwidth=theme['yaxis']['gridwidth'], gridcolor=theme['yaxis']['gridcolor'])
+    fig.update_xaxes(showgrid=theme['xaxis']['showgrid'], gridwidth=theme['xaxis']['gridwidth'], gridcolor=theme['xaxis']['gridcolor'], automargin=True)
+    fig.update_yaxes(showgrid=theme['yaxis']['showgrid'], gridwidth=theme['yaxis']['gridwidth'], gridcolor=theme['yaxis']['gridcolor'], automargin=True)
     return fig
 
 

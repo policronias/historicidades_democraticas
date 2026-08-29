@@ -1,0 +1,2 @@
+cartas_db.json filter=lfs diff=lfs merge=lfs -text
+cache/*.npz filter=lfs diff=lfs merge=lfs -text

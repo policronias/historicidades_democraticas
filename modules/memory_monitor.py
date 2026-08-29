@@ -23,6 +23,26 @@ def get_memory_usage_mb() -> float:
             return None
 
 
+def get_available_system_memory_mb() -> Optional[float]:
+    """
+    Retorna memória disponível no sistema (não apenas do processo) em MB.
+
+    Usado para alertar antes de operações pesadas (carregar modelo RoBERTa
+    ~420MB + embeddings ~200MB) que podem falhar com segmentation fault
+    quando o sistema está com pouca memória livre — esse crash acontece em
+    código nativo (torch/safetensors) e não pode ser capturado como exceção
+    Python, então o único jeito de evitar é avisar antes.
+
+    Returns:
+        Memória disponível em MB, ou None se psutil não estiver disponível.
+    """
+    try:
+        import psutil
+        return psutil.virtual_memory().available / (1024 * 1024)
+    except ImportError:
+        return None
+
+
 def display_memory_monitor(debug_mode: bool = False) -> Optional[str]:
     """
     Exibe monitor de memória no sidebar se debug_mode=True.

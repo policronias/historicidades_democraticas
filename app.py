@@ -56,6 +56,8 @@ from modules.memory_monitor import display_memory_monitor, get_available_system_
 
 from modules.data_manager import garantir_base_baixada
 garantir_base_baixada()
+from modules.data_manager import garantir_cache_baixado
+garantir_cache_baixado()
 
 # ============================================================================
 # CONFIGURAÇÃO STREAMLIT

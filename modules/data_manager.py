@@ -45,6 +45,38 @@ def garantir_base_baixada(destino: str = "cartas_db.json") -> None:
             st.stop()
 
 
+CACHE_FILES = ["embeddings_cartas_db.npz", "stems_cartas_db.pkl"]
+CACHE_BASE_URL = "https://github.com/policronias/historicidades-democraticas-dados/releases/download/dados-v1"
+
+
+def garantir_cache_baixado(cache_dir: str = "cache") -> None:
+    """
+    Garante que os arquivos de cache (embeddings semânticos e stems)
+    existam localmente antes do app tentar usá-los. Se não existirem,
+    baixa automaticamente do GitHub Release.
+    """
+    os.makedirs(cache_dir, exist_ok=True)
+
+    for nome_arquivo in CACHE_FILES:
+        destino = os.path.join(cache_dir, nome_arquivo)
+        if os.path.exists(destino):
+            continue
+
+        url = f"{CACHE_BASE_URL}/{nome_arquivo}"
+        with st.spinner(f"Baixando {nome_arquivo}..."):
+            try:
+                resp = requests.get(url, stream=True, timeout=180)
+                resp.raise_for_status()
+                with open(destino, "wb") as f:
+                    for chunk in resp.iter_content(chunk_size=8192):
+                        f.write(chunk)
+            except requests.RequestException as e:
+                st.warning(
+                    f"Não foi possível baixar {nome_arquivo} automaticamente: {e}. "
+                    "A busca semântica pode não funcionar até isso ser resolvido."
+                )
+
+                
 class DataManager:
     """Gerencia carregamento, salvamento e manipulação de bases de dados de cartas."""
 

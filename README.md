@@ -68,8 +68,9 @@ Plataforma completa de análise de documentos históricos construída com **Stre
 - **Relatório Analítico**: HTML com gráficos interativos Plotly, tabelas e metadados
 
 ### 10. **Design & UX**
-- Tema nativo Streamlit com dois modos: claro "Papel de Arquivo" (bege/terracota) e escuro "Grafite Noturno", alternáveis pelo menu ☰ > Settings
-- Tipografia serif (Source Serif 4) para leitura longa do texto das cartas
+- Identidade visual **"Policronias do presente"** (projeto de pesquisa UDESC/PPGH): sistema "papel de arquivo" — papel bege `#F1EDE2`, tinta grafite `#1B1815`, selo terracota `#9C3A26` como carimbo de ênfase; cantos sempre retos (raio 0)
+- Tema nativo Streamlit com dois modos: claro "Papel de arquivo" e escuro (paleta reversa Policronias, acento terracota claro `#D97A5E`), alternáveis pelo menu ☰ > Settings
+- Tipografia: Newsreader (títulos), IBM Plex Sans (corpo/interface), IBM Plex Mono (metadados); serif Newsreader para leitura longa do texto das cartas
 - Interface responsiva (desktop/tablet)
 - Sidebar dinâmica com contexto de navegação
 - Ícones intuitivos

@@ -1,73 +1,77 @@
 # Tema nativo Streamlit — Historicidades Democráticas
 #
-# Dois modos definidos ([theme.light] e [theme.dark]) para habilitar o
-# seletor nativo de tema (menu ☰ > Settings). Fontes, raio e bordas ficam
-# no bloco [theme] comum; cores específicas de cada modo ficam nos blocos
-# [theme.light] / [theme.dark].
+# Identidade visual "Policronias do presente" (projeto de pesquisa do Prof.
+# Walderez Ramalho, UDESC/PPGH). Sistema "papel de arquivo": papel bege,
+# tinta grafite quente, selo terracota (#9C3A26) como carimbo de ênfase,
+# links e datação. Cantos sempre retos (raio 0). Fontes: Newsreader
+# (títulos), IBM Plex Sans (corpo/interface), IBM Plex Mono (metadados).
 #
-# Claro "Papel de Arquivo": fundo bege-papel, texto grafite quente, accent
-# terracota/sépia — pensado para leitura longa em ambientes claros.
-# Escuro "Grafite Noturno": evolução do dark QVR anterior, com contraste
-# suavizado (sem preto/branco quase puros) para reduzir fadiga em sessões
-# longas de pesquisa.
+# Dois modos ([theme.light] / [theme.dark]) habilitam o seletor nativo
+# (menu ☰ > Settings):
+#   Claro  — "Papel de arquivo": papel #F1EDE2 sobre tinta #1B1815.
+#   Escuro — paleta reversa Policronias: tinta #1B1815 com textos #C9C2B0
+#            e acento terracota claro #D97A5E.
+#
+# Gráficos Plotly não herdam este arquivo — ao alterar uma cor aqui,
+# replicar em `_CHART_THEME` (modules/ui_manager.py).
 
 [theme]
-font = "Manrope:https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"
-headingFont = "'Source Serif 4':https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap"
-codeFont = "'IBM Plex Mono':https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap"
+font = "'IBM Plex Sans':https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+headingFont = "Newsreader:https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,72,400;0,72,500;1,72,400;1,72,500&display=swap"
+codeFont = "'IBM Plex Mono':https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap"
 baseFontSize = 16
 baseFontWeight = 400
-baseRadius = "8px"
+baseRadius = "none"
 showWidgetBorder = true
 showSidebarBorder = true
 linkUnderline = false
 
 [theme.light]
-primaryColor = "#9c6b3f"
-backgroundColor = "#f7f3ea"
-secondaryBackgroundColor = "#efe9dc"
-textColor = "#2b2621"
-borderColor = "#ddd4c2"
-linkColor = "#8a5a2f"
-codeBackgroundColor = "#efe9dc"
-codeTextColor = "#2b2621"
-dataframeBorderColor = "#ddd4c2"
-dataframeHeaderBackgroundColor = "#efe9dc"
-greenColor = "#4f9d6e"
-redColor = "#c1555c"
-orangeColor = "#b8823a"
-blueColor = "#5b7c99"
-grayColor = "#6b645a"
-chartCategoricalColors = ["#9c6b3f", "#4b4740", "#4f9d6e", "#c1555c", "#b8823a", "#5b7c99"]
+primaryColor = "#9c3a26"
+backgroundColor = "#f1ede2"
+secondaryBackgroundColor = "#f8f5ec"
+textColor = "#1b1815"
+borderColor = "#cdc4ae"
+linkColor = "#9c3a26"
+codeBackgroundColor = "#f8f5ec"
+codeTextColor = "#1b1815"
+dataframeBorderColor = "#cdc4ae"
+dataframeHeaderBackgroundColor = "#e4dfd3"
+greenColor = "#5c6a4c"
+redColor = "#a13a2e"
+orangeColor = "#c98a2e"
+blueColor = "#4f6472"
+grayColor = "#56514a"
+chartCategoricalColors = ["#9c3a26", "#5c6a4c", "#1b1815", "#c98a2e", "#4f6472", "#9c8f7d"]
 
 [theme.light.sidebar]
-backgroundColor = "#efe9dc"
-secondaryBackgroundColor = "#e5ddc9"
-textColor = "#2b2621"
-borderColor = "#ddd4c2"
-primaryColor = "#9c6b3f"
+backgroundColor = "#e9e3d5"
+secondaryBackgroundColor = "#e4dfd3"
+textColor = "#1b1815"
+borderColor = "#cdc4ae"
+primaryColor = "#9c3a26"
 
 [theme.dark]
-primaryColor = "#c99a5e"
-backgroundColor = "#181c21"
-secondaryBackgroundColor = "#20262c"
-textColor = "#e7e3d8"
-borderColor = "#3a4d5c"
-linkColor = "#eec98a"
-codeBackgroundColor = "#20262c"
-codeTextColor = "#e7e3d8"
-dataframeBorderColor = "#3a4d5c"
-dataframeHeaderBackgroundColor = "#20262c"
-greenColor = "#6fc191"
-redColor = "#e2727a"
-orangeColor = "#e8b563"
-blueColor = "#7dd3fc"
-grayColor = "#a9b6c2"
-chartCategoricalColors = ["#c99a5e", "#a9b6c2", "#6fc191", "#e2727a", "#e8b563", "#7dd3fc"]
+primaryColor = "#d97a5e"
+backgroundColor = "#1b1815"
+secondaryBackgroundColor = "#252019"
+textColor = "#c9c2b0"
+borderColor = "#3a352d"
+linkColor = "#e08a6f"
+codeBackgroundColor = "#252019"
+codeTextColor = "#c9c2b0"
+dataframeBorderColor = "#3a352d"
+dataframeHeaderBackgroundColor = "#2f2921"
+greenColor = "#9aa886"
+redColor = "#cf6a54"
+orangeColor = "#d9a24e"
+blueColor = "#8fa3b0"
+grayColor = "#9c8f7d"
+chartCategoricalColors = ["#d97a5e", "#9aa886", "#c9c2b0", "#d9a24e", "#8fa3b0", "#9c8f7d"]
 
 [theme.dark.sidebar]
-backgroundColor = "#141a1f"
-secondaryBackgroundColor = "#1b2229"
-textColor = "#e7e3d8"
-borderColor = "#3a4d5c"
-primaryColor = "#c99a5e"
+backgroundColor = "#151210"
+secondaryBackgroundColor = "#211c16"
+textColor = "#c9c2b0"
+borderColor = "#3a352d"
+primaryColor = "#d97a5e"

@@ -33,9 +33,10 @@ Plataforma **Historicidades Democráticas** — análise, busca semântica e arq
 
 ## Arquitetura — decisões não-óbvias
 
-### Tema nativo Streamlit (2026-08)
-- **Cores vêm de `.streamlit/config.toml`** (`[theme.light]`/`[theme.dark]`), não mais de CSS custom — habilita o seletor nativo de tema (menu ☰ > Settings). `configure_page_style()` só aplica CSS que o theming nativo não cobre (tipografia serif do texto da carta).
-- **Gráficos Plotly não herdam o tema nativo** (Streamlit só expõe `st.context.theme.type`, não os valores de cor) — por isso `modules/ui_manager.py` mantém `_CHART_THEME`, um dict `light`/`dark` que espelha manualmente as cores do `config.toml`. Ao alterar uma cor no `config.toml`, replicar em `_CHART_THEME`.
+### Identidade visual "Policronias do presente" (2026-08-29)
+- **Sistema de marca**: projeto de pesquisa UDESC/PPGH do Prof. Walderez Ramalho. Sistema "papel de arquivo" — papel `#F1EDE2`, tinta `#1B1815`, **selo `#9C3A26`** (terracota de carimbo) para ênfase/links/datação; musgo `#5C6A4C` é acento secundário raro. **Nunca selo + musgo juntos em grande área.** Cantos sempre retos (`baseRadius = "none"`). Fontes: Newsreader (títulos, itálico 500), IBM Plex Sans (corpo/interface), IBM Plex Mono (metadados/datas). Skill de referência: `policronias-do-presente-design`.
+- **Cores vêm de `.streamlit/config.toml`** (`[theme.light]`/`[theme.dark]`), não de CSS custom — habilita o seletor nativo de tema (menu ☰ > Settings). Claro = papel Policronias; escuro = paleta reversa (fundo `#1B1815`, texto `#C9C2B0`, acento `#D97A5E`). `configure_page_style()` só aplica CSS que o theming nativo não cobre (tipografia serif Newsreader do texto da carta).
+- **Gráficos Plotly não herdam o tema nativo** (Streamlit só expõe `st.context.theme.type`, não os valores de cor) — por isso `modules/ui_manager.py` mantém `_CHART_THEME`, um dict `light`/`dark` que espelha manualmente as cores do `config.toml`. Ao alterar uma cor no `config.toml`, replicar em `_CHART_THEME`. As paletas de série (`FrequencyAnalyzer.COLOR_PALETTE`, `HIGHLIGHT_PALETTE` em `config_manager.py`) também seguem a família Policronias.
 - **`get_color_scheme()` não existe mais** — função antiga de uma versão anterior do theming (CSS manual); qualquer referência a ela em código ou docs está obsoleta.
 
 ### Refatoração (2026-07)

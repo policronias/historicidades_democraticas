@@ -55,14 +55,15 @@ MAX_PAGE_SIZE = 50
 # ============================================================================
 
 # Paleta de destaque (highlight) de termos em texto — usada em Explorar e
-# como default do SearchEngine. Cores fixas (independentes do tema
-# claro/escuro), já que cada <mark> define seu próprio texto/fundo.
+# como default do SearchEngine. Tintas de papel Policronias, fixas
+# (independentes do tema claro/escuro): cada <mark> recebe texto tinta
+# (#1b1815) sobre estas cores claras, legível nos dois modos.
 HIGHLIGHT_PALETTE = [
-    '#eec98a',  # brass bright
-    '#e2727a',  # coral
-    '#6fc191',  # verde "pass"
-    '#7dd3fc',  # azul-céu
-    '#c9a4e0',  # violeta suave
+    '#e8c9a0',  # âmbar-papel
+    '#e6b8a6',  # selo dessaturado claro
+    '#c3ccb2',  # musgo claro
+    '#d9cdb4',  # areia / linha
+    '#cbb9c6',  # violeta acinzentado
 ]
 
 # Mensagens padrão

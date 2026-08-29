@@ -2,11 +2,11 @@
 UI Manager - Gerencia estilos CSS e elementos de interface
 Extraído de app.py para melhor organização e manutenção.
 
-Theming: cores e fontes vêm do tema nativo do Streamlit
-(.streamlit/config.toml, seções [theme.light] / [theme.dark]). O CSS aqui
-fica restrito ao que o config.toml não cobre — hoje, só a tipografia do
-texto da carta (não há "terceira fonte" para corpo de leitura no theming
-nativo, apenas font/headingFont/codeFont).
+Theming: identidade visual "Policronias do presente" — cores e fontes vêm
+do tema nativo do Streamlit (.streamlit/config.toml, seções [theme.light] /
+[theme.dark]). O CSS aqui fica restrito ao que o config.toml não cobre —
+hoje, só a tipografia serif do texto da carta (não há "terceira fonte"
+para corpo de leitura no theming nativo, apenas font/headingFont/codeFont).
 """
 
 import streamlit as st
@@ -23,9 +23,9 @@ def configure_page_style():
     /* Tipografia do texto da carta — sem cor/background, só leitura longa.
        Cores vêm do container nativo (st.container(border=True)) em volta. */
     .letter-text {
-        font-family: 'Source Serif 4', Georgia, 'Iowan Old Style', 'Palatino Linotype', Palatino, serif;
-        font-size: 17px;
-        line-height: 1.75;
+        font-family: 'Newsreader', Georgia, 'Iowan Old Style', 'Palatino Linotype', Palatino, serif;
+        font-size: 18px;
+        line-height: 1.7;
         width: 100%;
         white-space: pre-wrap;
         word-wrap: break-word;
@@ -39,7 +39,7 @@ def configure_page_style():
 
     .letter-text mark {
         padding: 2px 4px;
-        border-radius: 3px;
+        border-radius: 0;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -53,7 +53,7 @@ def render_letter_text(texto: str, compact: bool = False, accent: str = None):
     Uso:
         render_letter_text(carta['texto'])
         render_letter_text(texto_destacado, compact=True)  # já com <mark> embutido
-        render_letter_text(texto_destacado, compact=True, accent="#c99a5e")  # com faixa lateral colorida (ex: cor do termo em Frequência)
+        render_letter_text(texto_destacado, compact=True, accent="#9c3a26")  # com faixa lateral colorida (ex: cor do termo em Frequência)
 
     Args:
         texto: Texto da carta, opcionalmente já contendo tags <mark> de highlight.
@@ -79,22 +79,22 @@ def _current_theme_mode() -> str:
 
 _CHART_THEME = {
     "light": {
-        "font_color": "#2b2621",
-        "grid_color": "#ddd4c2",
-        "legend_bg": "rgba(255, 255, 255, 0.65)",
-        "legend_border": "#ddd4c2",
-        "accent": "#9c6b3f",
-        "sequential_scale": ["#efe9dc", "#9c6b3f"],
-        "categorical": ["#9c6b3f", "#4b4740", "#4f9d6e", "#c1555c", "#b8823a", "#5b7c99"],
+        "font_color": "#1b1815",
+        "grid_color": "#cdc4ae",
+        "legend_bg": "rgba(248, 245, 236, 0.75)",
+        "legend_border": "#cdc4ae",
+        "accent": "#9c3a26",
+        "sequential_scale": ["#f1ede2", "#9c3a26"],
+        "categorical": ["#9c3a26", "#5c6a4c", "#1b1815", "#c98a2e", "#4f6472", "#9c8f7d"],
     },
     "dark": {
-        "font_color": "#e7e3d8",
-        "grid_color": "#3a4d5c",
-        "legend_bg": "rgba(0, 0, 0, 0.3)",
-        "legend_border": "#3a4d5c",
-        "accent": "#c99a5e",
-        "sequential_scale": ["#20262c", "#c99a5e"],
-        "categorical": ["#c99a5e", "#a9b6c2", "#6fc191", "#e2727a", "#e8b563", "#7dd3fc"],
+        "font_color": "#c9c2b0",
+        "grid_color": "#3a352d",
+        "legend_bg": "rgba(27, 24, 21, 0.6)",
+        "legend_border": "#3a352d",
+        "accent": "#d97a5e",
+        "sequential_scale": ["#252019", "#d97a5e"],
+        "categorical": ["#d97a5e", "#9aa886", "#c9c2b0", "#d9a24e", "#8fa3b0", "#9c8f7d"],
     },
 }
 
@@ -137,7 +137,7 @@ def get_plotly_theme_template() -> dict:
     return {
         'plot_bgcolor': 'rgba(0,0,0,0)',
         'paper_bgcolor': 'rgba(0,0,0,0)',
-        'font': {'family': 'Manrope, sans-serif', 'color': theme['font_color']},
+        'font': {'family': "'IBM Plex Sans', sans-serif", 'color': theme['font_color']},
         'xaxis': {'showgrid': True, 'gridwidth': 1, 'gridcolor': theme['grid_color']},
         'yaxis': {'showgrid': True, 'gridwidth': 1, 'gridcolor': theme['grid_color']},
         'title': {'font': {'size': 16, 'color': theme['font_color']}, 'x': 0.5, 'xanchor': 'center'},
@@ -172,7 +172,7 @@ def format_pie_labels(fig):
     """
     Formata rótulos de gráficos de pizza com valores negritados para melhor legibilidade.
     O texto do rótulo fica sobre a cor da fatia (não sobre o fundo da página),
-    por isso usa um branco quente fixo, válido nos dois temas.
+    por isso usa o papel Policronias (#f8f5ec) fixo, válido nos dois temas.
 
     Uso:
         fig = px.pie(...)
@@ -181,7 +181,7 @@ def format_pie_labels(fig):
     """
     fig.update_traces(
         textposition='inside',
-        textfont=dict(size=12, color='#fdfcf8', family='Manrope', weight='bold'),
+        textfont=dict(size=12, color='#f8f5ec', family="'IBM Plex Sans', sans-serif", weight='bold'),
         hovertemplate='<b>%{label}</b><br>Quantidade: %{value}<br>Percentual: %{percent}<extra></extra>'
     )
     return fig

@@ -211,13 +211,13 @@ with st.sidebar:
     st.markdown(
         f"""
         <div style="line-height: 1.1; margin-bottom: 0.3rem;">
-            <div style="font-family: 'Source Serif 4', Georgia, serif; font-size: 2.5rem;
-                        font-weight: 600; color: {get_accent_color()};">
+            <div style="font-family: 'Newsreader', Georgia, serif; font-size: 2.4rem;
+                        font-weight: 500; font-style: italic; color: {get_accent_color()};">
                 Historicidades Democráticas
             </div>
-            <div style="font-size: 1.1rem; font-style: Manrope; letter-spacing: 0.1em;
-                        margin-top: 24px; opacity: 0.75;">
-                por Walderez Ramalho (UDESC)
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem;
+                        letter-spacing: 0.06em; margin-top: 24px; opacity: 0.75;">
+                Prof. Walderez Ramalho (UDESC) · Policronias do presente
             </div>
         </div>
         """,

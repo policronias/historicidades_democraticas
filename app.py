@@ -54,6 +54,8 @@ from modules.ui_manager import (
 )
 from modules.memory_monitor import display_memory_monitor, get_available_system_memory_mb
 
+from modules.data_manager import garantir_base_baixada
+garantir_base_baixada()
 
 # ============================================================================
 # CONFIGURAÇÃO STREAMLIT

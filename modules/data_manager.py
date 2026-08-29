@@ -9,10 +9,40 @@ from typing import Dict, List, Optional, Tuple
 from datetime import datetime
 
 import streamlit as st
+import requests
 
 # Cache de módulo: evita re-parsear JSON de 100+ MB a cada reinício de sessão.
 # Chave = caminho absoluto do arquivo; valor = {'mtime': float, 'data': dict}
 _PARSED_DB_CACHE: Dict[str, dict] = {}
+
+
+GITHUB_OWNER = "policronias"
+GITHUB_REPO = "historicidades_democraticas"
+GITHUB_RELEASE_TAG = "dados-v1"          # a tag que você criou na Release
+GITHUB_ASSET_NAME = "cartas_db.json"      # nome exato do arquivo anexado na Release
+
+
+DADOS_URL = "https://github.com/policronias/historicidades-democraticas-dados/releases/download/dados-v1/cartas_db.json"
+
+
+def garantir_base_baixada(destino: str = "cartas_db.json") -> None:
+    """
+    Garante que o arquivo de dados exista localmente antes do app tentar carregá-lo.
+    Se não existir, baixa automaticamente de um link público.
+    """
+    if os.path.exists(destino):
+        return
+
+    with st.spinner("Baixando base de dados pela primeira vez (pode levar 1-2 minutos)..."):
+        try:
+            resp = requests.get(DADOS_URL, stream=True, timeout=180)
+            resp.raise_for_status()
+            with open(destino, "wb") as f:
+                for chunk in resp.iter_content(chunk_size=8192):
+                    f.write(chunk)
+        except requests.RequestException as e:
+            st.error(f"Erro ao baixar a base de dados: {e}")
+            st.stop()
 
 
 class DataManager:

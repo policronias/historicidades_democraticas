@@ -849,13 +849,9 @@ tab_home, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs(
 with tab_home:
     _bp = get_brand_palette()
 
-    _total_cartas_home = len(dm.get_ids_cartas())
-    _n_series_home = len(_todas_series)
-    _total_cartas_fmt = f"{_total_cartas_home:,}".replace(",", ".")
-
-    # Hero — símbolo da marca sobre fundo chapado (sem moldura), wordmark e
-    # metadados. Cores herdadas do tema real (currentColor / opacity) para
-    # não destoar caso st.context.theme fique indefinido num rerun.
+    # Hero — símbolo da marca sobre fundo chapado (sem moldura) e wordmark.
+    # Cores herdadas do tema real (currentColor / opacity) para não destoar
+    # caso st.context.theme fique indefinido num rerun.
     st.markdown(
         f"""
         <div style="text-align:center; padding:8px 0 4px;">
@@ -868,27 +864,13 @@ with tab_home:
           </div>
           <div style="font-family:'Newsreader',Georgia,serif; font-size:1.2rem;
                       margin-top:6px; opacity:0.9;">
-            Painel Historicidades Democráticas
-          </div>
-          <div style="font-family:'IBM Plex Mono',monospace; font-size:0.8rem;
-                      letter-spacing:0.04em; margin-top:14px; opacity:0.65;">
-            {_total_cartas_fmt} cartas &middot; {_n_series_home} séries temáticas
-            &middot; Base SAIC &middot; 1986–1988
+            Painel Historicidades Democráticas | Base SAIC
           </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    st.markdown(
-        "<div style='max-width:720px; margin:20px auto 0; text-align:center; "
-        "opacity:0.8; line-height:1.6;'>"
-        "Plataforma de análise, busca semântica e arquivamento das sugestões "
-        "enviadas por cidadãos ao processo constituinte de 1987–1988. "
-        "Escolha abaixo por onde começar — cada cartão abre a aba correspondente."
-        "</div>",
-        unsafe_allow_html=True,
-    )
 
     st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
     st.subheader("Funcionalidades")

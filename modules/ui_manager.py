@@ -11,6 +11,9 @@ para corpo de leitura no theming nativo, apenas font/headingFont/codeFont).
 
 import streamlit as st
 
+# Nota: exporta get_brand_palette / policronias_mark_svg (usados por app.py).
+# Alteração trivial para forçar o Streamlit Cloud a re-sincronizar este arquivo.
+
 
 def configure_page_style():
     """

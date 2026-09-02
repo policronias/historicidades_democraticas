@@ -80,6 +80,32 @@ Plataforma completa de análise de documentos históricos construída com **Stre
 - Ícones intuitivos
 - Cache Streamlit para performance
 
+## 📋 Sobre os Dados
+
+A base de dados utilizada pela plataforma (`cartas_db.json`) deriva
+integralmente da **Base SAIC** — o banco de dados oficial produzido pelo
+Senado Federal (PRODASEN) com as 72.719 sugestões enviadas por cidadãos
+brasileiros à Assembleia Nacional Constituinte (1986–1987), disponível
+publicamente em
+[senado.leg.br](https://www12.senado.leg.br/noticias/constituicao-dos-sonhos/).
+
+**Nenhum valor de célula da planilha original foi alterado.** A conversão
+para o formato interno do software envolveu apenas:
+
+1. **Normalização dos nomes de coluna** (ex.: `SUGESTAO.TEXTO` → `texto`,
+   `ESTADO CIVIL` → `estado_civil`) — mudança puramente formal, sem
+   impacto no conteúdo.
+2. **Adição de três campos de apoio à pesquisa**, que não existem na
+   planilha original do Senado:
+   - `linha` — número da linha na planilha original, para rastreabilidade;
+   - `anotacoes` — anotações inseridas pelo(a) pesquisador(a) durante a análise;
+   - `series` — vínculo da carta a séries temáticas criadas na pesquisa.
+
+Esses três campos são produção analítica do projeto de pesquisa e não
+devem ser confundidos com dados do cidadão-autor da carta ou do
+Senado/PRODASEN. Para a tabela completa de correspondência entre a
+planilha original e a base do software, ver [`DATA_DICTIONARY.md`](DATA_DICTIONARY.md).
+
 ## 🚀 Como Usar
 
 ### Instalação

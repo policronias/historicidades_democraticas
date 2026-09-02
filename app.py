@@ -1060,6 +1060,14 @@ with tab1:
             # Metadados - Apresentação compacta
             st.markdown("---")
             st.subheader("📋 Metadados da Carta")
+            st.caption(
+                "🏛️ **Campos da Base SAIC** (fonte primária do Senado Federal, "
+                "reproduzidos sem alteração de conteúdo): autor, destinatário, texto, "
+                "origem, data, catálogo, indexação e todos os dados sociodemográficos. "
+                "🔬 **Campos de pesquisa** adicionados por este software, que **não** "
+                "integram a fonte primária: `linha` (nº da linha na planilha original), "
+                "`anotações` e `séries` temáticas. Ver `DATA_DICTIONARY.md`."
+            )
 
             # Formata a data para DD/MM/YYYY
             data_raw = carta.get('data') or 'N/A'
@@ -1571,6 +1579,23 @@ with tab4:
 
     st.info("ℹ️ Exporte seus dados em diversos formatos para análise externa ou backup.")
 
+    somente_saic_export = st.checkbox(
+        "Exportar somente campos originais da Base SAIC",
+        value=False,
+        key="export_somente_saic",
+        help=(
+            "Quando marcado, os arquivos CSV e JSON (resultados de busca e série "
+            "individual) omitem as colunas acrescentadas pelo software — `linha`, "
+            "`anotacoes` e `series` —, produzindo um recorte equivalente aos campos "
+            "originais do Senado Federal. Ver DATA_DICTIONARY.md."
+        )
+    )
+    if somente_saic_export:
+        st.caption(
+            "🔒 CSV/JSON serão exportados sem `linha`, `anotacoes` e `series` "
+            "(apenas campos da fonte primária)."
+        )
+
     # ========== EXPORTAR RESULTADOS DA BUSCA ==========
     if st.session_state.search_results:
         st.subheader("🔍 Exportar Resultados da Busca")
@@ -1586,7 +1611,8 @@ with tab4:
                 st.session_state.search_results,
                 f"busca_{termo_label}",
                 am.get_todas_anotacoes(),
-                series=sm.series
+                series=sm.series,
+                somente_saic=somente_saic_export
             )
             st.download_button(
                 label="💾 Baixar CSV",
@@ -1601,7 +1627,8 @@ with tab4:
                 _todas_cartas,
                 st.session_state.search_results,
                 f"busca_{termo_label}",
-                am.get_todas_anotacoes()
+                am.get_todas_anotacoes(),
+                somente_saic=somente_saic_export
             )
             st.download_button(
                 label="💾 Baixar JSON",
@@ -1694,7 +1721,8 @@ with tab4:
                         cartas_serie,
                         serie_export,
                         am.get_todas_anotacoes(),
-                        series=sm.series
+                        series=sm.series,
+                        somente_saic=somente_saic_export
                     )
                     st.download_button(
                         label="💾 Baixar CSV",
@@ -1710,7 +1738,8 @@ with tab4:
                         _todas_cartas,
                         cartas_serie,
                         serie_export,
-                        am.get_todas_anotacoes()
+                        am.get_todas_anotacoes(),
+                        somente_saic=somente_saic_export
                     )
                     st.download_button(
                         label="💾 Baixar JSON",

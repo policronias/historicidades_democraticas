@@ -542,12 +542,18 @@ class ExportManager:
         ids_serie: List[str],
         nome_serie: str,
         anotacoes: Dict[str, str],
-        series: Dict = None
+        series: Dict = None,
+        somente_saic: bool = False
     ) -> bytes:
-        """Exporta lista de cartas como CSV com todos os metadados e séries vinculadas."""
+        """Exporta lista de cartas como CSV com todos os metadados e séries vinculadas.
+
+        Se ``somente_saic`` for True, omite as colunas acrescentadas pelo
+        software (``LINHA_BASE_SAIC``, ``ANOTACOES`` e ``SERIES_TEMATICAS``),
+        produzindo um recorte equivalente aos campos originais da Base SAIC.
+        """
         # Índice carta_id → séries (a partir do SeriesManager, se fornecido)
         carta_series_idx: Dict[str, list] = {}
-        if series:
+        if series and not somente_saic:
             for ns, si in series.items():
                 for cid in si['cartas']:
                     carta_series_idx.setdefault(cid, []).append(ns)
@@ -557,20 +563,20 @@ class ExportManager:
         output = io.StringIO()
         writer = csv.writer(output, delimiter=';', quoting=csv.QUOTE_ALL)
 
-        writer.writerow([
-            'SERIES_TEMATICAS',
-            'LINHA_BASE_SAIC', 'NOME', 'DESTINATARIO', 'CATALOGO', 'INDEXACAO', 'ORIGEM', 'DATA',
+        colunas_saic = [
+            'NOME', 'DESTINATARIO', 'CATALOGO', 'INDEXACAO', 'ORIGEM', 'DATA',
             'FORMUL', 'DV', 'DATA2', 'MUNICIPIO', 'UF', 'CEP', 'SEXO', 'MORADOR', 'INSTRUCAO',
-            'ESTADO CIVIL', 'FAIXA ETÁRIA', 'FAIXA RENDA', 'ATIVIDADE', 'TEXTO', 'ANOTACOES'
-        ])
+            'ESTADO CIVIL', 'FAIXA ETÁRIA', 'FAIXA RENDA', 'ATIVIDADE', 'TEXTO'
+        ]
+        if somente_saic:
+            writer.writerow(colunas_saic)
+        else:
+            writer.writerow(['SERIES_TEMATICAS', 'LINHA_BASE_SAIC'] + colunas_saic + ['ANOTACOES'])
 
         for carta_id in ids_serie:
             if carta_id in cartas:
                 c = cartas[carta_id]
-                series_str = ' | '.join(carta_series_idx.get(carta_id, []))
-                writer.writerow([
-                    series_str,
-                    carta_id,
+                linha_saic = [
                     c.get('nome', ''),
                     c.get('destinatario', ''),
                     c.get('catalogo', ''),
@@ -591,8 +597,14 @@ class ExportManager:
                     c.get('faixa_renda', ''),
                     c.get('atividade', ''),
                     c.get('texto', ''),
-                    anotacoes.get(carta_id, '')
-                ])
+                ]
+                if somente_saic:
+                    writer.writerow(linha_saic)
+                else:
+                    series_str = ' | '.join(carta_series_idx.get(carta_id, []))
+                    writer.writerow(
+                        [series_str, carta_id] + linha_saic + [anotacoes.get(carta_id, '')]
+                    )
 
         return output.getvalue().encode('utf-8-sig')
 
@@ -601,21 +613,27 @@ class ExportManager:
         cartas: Dict,
         ids_serie: List[str],
         nome_serie: str,
-        anotacoes: Dict[str, str]
+        anotacoes: Dict[str, str],
+        somente_saic: bool = False
     ) -> str:
-        """Exporta lista de cartas como JSON com todos os metadados."""
+        """Exporta lista de cartas como JSON com todos os metadados.
+
+        Se ``somente_saic`` for True, omite os campos acrescentados pelo
+        software (``linha``, ``anotacoes`` e ``series``), produzindo um
+        recorte equivalente aos campos originais da Base SAIC.
+        """
         serie_data = {
             'nome': nome_serie,
             'data_exportacao': datetime.now().isoformat(),
             'total_cartas': len(ids_serie),
+            'somente_campos_saic': somente_saic,
             'cartas': []
         }
 
         for carta_id in ids_serie:
             if carta_id in cartas:
                 c = cartas[carta_id]
-                serie_data['cartas'].append({
-                    'linha': carta_id,
+                registro = {
                     'nome': c.get('nome', ''),
                     'destinatario': c.get('destinatario', ''),
                     'catalogo': c.get('catalogo', ''),
@@ -636,9 +654,15 @@ class ExportManager:
                     'faixa_renda': c.get('faixa_renda', ''),
                     'atividade': c.get('atividade', ''),
                     'texto': c.get('texto', ''),
-                    'anotacoes': anotacoes.get(carta_id, ''),
-                    'series': c.get('series', [])
-                })
+                }
+                if not somente_saic:
+                    registro = {
+                        'linha': carta_id,
+                        **registro,
+                        'anotacoes': anotacoes.get(carta_id, ''),
+                        'series': c.get('series', []),
+                    }
+                serie_data['cartas'].append(registro)
 
         return json.dumps(serie_data, ensure_ascii=False, indent=2)
 

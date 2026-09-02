@@ -2,7 +2,7 @@
 
 > Documento preparado para orientar planejamento de melhorias técnicas, novos recursos e evolução arquitetural do software. Descreve o estado real do código (não a intenção original), levantado por leitura direta de `app.py` e dos módulos em `modules/`.
 >
-> **Última atualização**: 2026-08-23 (migração para tema nativo Streamlit + redesign do cabeçalho da sidebar)
+> **Última atualização**: 2026-08-29 (página inicial 🏠 Início; busca por "Variações" migrada de dicionário fixo para stemming RSLP + índice de stems na aba Config; download automático da base e do cache via GitHub Releases; branch de deploy renomeada `master` → `main`)
 
 ## 1. Propósito e contexto
 
@@ -15,29 +15,37 @@ A base principal (`cartas_db.json`) tem **~103 MB** e é carregada inteiramente 
 ## 2. Arquitetura geral
 
 ```
-app.py                      # Aplicação Streamlit (~3.509 linhas), single-page com 9 abas
+app.py                       # Aplicação Streamlit (~3.610 linhas), single-page: 🏠 Início + 9 abas de trabalho
 modules/
-  __init__.py                # Agregador de exports públicos dos módulos
-  data_manager.py       (272) # Carga/troca de bases, índices, cache de JSON parseado em memória de módulo
-  search_engine.py      (527) # Busca avançada (operadores), variações lexicais, highlight
-  semantic_engine.py    (385) # Embeddings RoBERTa, cache .npz, busca por similaridade cosseno
-  series_manager.py     (345) # Séries temáticas, índice invertido carta→séries
-  annotation_manager.py (218) # Anotações por carta + caderno de pesquisa, persistência JSON atômica
-  export_manager.py    (1573) # CSV/JSON/Parquet/HTML/PDF/ZIP — exportação unificada
-  frequency_analyzer.py (300) # Análise de frequência de termos (aba 9, agora documentada)
-  stemming_engine.py    (~80) # Processamento de stemming/stemming com RSLP
-  cache_manager.py      (127) # CONSOLIDADO: funções cacheadas (build_df_fast, compute_chart_data_cached, build_semantic_csv_cached)
-  ui_manager.py         (201) # CONSOLIDADO: CSS mínimo (só tipografia), tema herdado de .streamlit/config.toml, get_accent_color()
-  config_manager.py     (156) # Constantes, paths, paleta de cores, grupos de campos
-  memory_monitor.py      (51) # Monitor de memória do processo (psutil), ativável via query string ?debug=true
+  __init__.py                 # Agregador de exports públicos dos módulos
+  data_manager.py       (334) # Carga/troca de bases, índices, cache de JSON parseado em memória de módulo; download automático (garantir_base_baixada / garantir_cache_baixado) via GitHub Releases
+  search_engine.py      (631) # Busca avançada (operadores), highlight; modo "Variações" delega a StemmingEngine
+  semantic_engine.py    (463) # Embeddings RoBERTa, cache .npz, busca por similaridade cosseno
+  semantic_engine_cache.py (75) # get_model_cached / get_embeddings_cached (@st.cache_resource, compartilhado entre sessões)
+  series_manager.py     (352) # Séries temáticas, índice invertido carta→séries
+  annotation_manager.py (225) # Anotações por carta + caderno de pesquisa, persistência JSON atômica + filelock
+  export_manager.py    (1623) # CSV/JSON/Parquet/HTML/PDF/ZIP — exportação unificada
+  frequency_analyzer.py (301) # Análise de frequência de termos (aba 9)
+  stemming_engine.py    (446) # Variações lexicais por radical RSLP (NLTK); índice invertido stem→formas/cartas em cache/stems_*.pkl
+  search_suggestions.py (152) # Autocomplete / sugestões de termos a partir do histórico de buscas
+  feedback_manager.py   (104) # Helpers de feedback visual (st.status, progress bars, mensagens padronizadas)
+  cache_manager.py      (239) # CONSOLIDADO: funções cacheadas de dados + estado de lazy-load das abas 6–9 + cache de resultados de busca em session_state
+  ui_manager.py         (248) # CONSOLIDADO: CSS mínimo (só tipografia), tema em .streamlit/config.toml, _CHART_THEME/_BRAND_PALETTE, helpers Plotly, policronias_mark_svg()
+  config_manager.py      (79) # Constantes (PAGE_CONFIG, METADATA_FIELDS, ANALYSIS_FIELDS, EMBEDDING_MODEL, HIGHLIGHT_PALETTE, MESSAGES) — sem paths
+  memory_monitor.py      (70) # Monitor de memória do processo (psutil), ativável via query string ?debug=memory
 sessions/current_session.json  # Único arquivo de estado persistido (anotações, caderno, séries)
-cache/embeddings_*.npz         # Cache de embeddings por base de dados
+cache/embeddings_*.npz         # Cache de embeddings por base de dados (baixado automaticamente)
+cache/stems_*.pkl              # Índice de stems RSLP por base de dados (baixado automaticamente)
 scripts/
+  backup_sessao.py             # Script auxiliar — backup manual da sessão
   consolidar_buscas.py   (321) # Script auxiliar — consolidação de múltiplos CSVs de busca
   precompute_embeddings.py (197) # Script CLI para pré-computar embeddings (evita timeout do Streamlit Cloud)
+tests/                         # pytest — test_search_engine, test_series_manager, test_annotation_manager, conftest
 ```
 
-**Observação arquitetural**: `app.py` é uma aplicação Streamlit de execução única (script top-to-bottom, reexecutado a cada interação), sem funções `main()` nem roteamento — os 9 blocos `with tabX:` são simplesmente seções sequenciais do mesmo script. Esse é o modelo de execução padrão do Streamlit. 
+**Observação arquitetural**: `app.py` é uma aplicação Streamlit de execução única (script top-to-bottom, reexecutado a cada interação), sem funções `main()` nem roteamento — a aba **🏠 Início** (`tab_home`) e os 9 blocos `with tabX:` são simplesmente seções sequenciais do mesmo script. Esse é o modelo de execução padrão do Streamlit.
+
+**Download automático de artefatos grandes**: o repositório de código **não** versiona `cartas_db.json` (~103 MB) nem `cache/*`. No topo de `app.py`, `garantir_base_baixada()` e `garantir_cache_baixado()` (em `data_manager.py`) baixam esses arquivos das GitHub Releases (`policronias/historicidades-democraticas-dados`, tag `dados-v1`) via `requests` caso ausentes — idempotente, roda uma vez por ambiente.
 
 **Refatoração realizada (2026-07-18)**:
 - ✅ **`cache_manager.py` consolidado**: funções cacheadas (`build_df_fast()`, `compute_chart_data_cached()`, `build_semantic_csv_cached()`) removidas de `app.py` e importadas de `modules.cache_manager`
@@ -53,19 +61,19 @@ scripts/
 
 ## 3. As abas da aplicação
 
-A interface tem uma aba **🏠 Início** (página de entrada com a logomarca Policronias e cartões que abrem cada aba) seguida de 9 abas de trabalho (`st.tabs`). A **Busca Avançada + "Ir para Carta" + histórico** ficam dentro da aba 🔍 Explorar Cartas (`render_explorar_search_tools()`), não mais acima das abas:
+A interface tem uma aba **🏠 Início** (`tab_home`, ~app.py:849-898 — logomarca Policronias via `policronias_mark_svg()` + 9 cartões de `TAB_FEATURES` que descrevem e abrem cada aba; navegação programática por `st.tabs(TAB_LABELS, key="main_tabs", on_change="rerun")` + callback `_goto_tab`) seguida de 9 abas de trabalho (`st.tabs`). A **Busca Avançada + "Ir para Carta" + histórico** ficam dentro da aba 🔍 Explorar Cartas (`render_explorar_search_tools()`, ~app.py:531), não mais acima das abas. Faixas de linha abaixo são aproximadas (o script cresce a cada feature):
 
 | # | Aba | Arquivo/linhas | Função |
 |---|-----|-----------------|--------|
-| 1 | 🔍 Explorar Cartas | app.py:796-1030 | Navegação sequencial (anterior/próxima/dropdown), metadados completos, anotação inline, painel de séries |
-| 2 | 📓 Caderno | app.py:1031-1063 | Anotação por carta + caderno de pesquisa livre em Markdown |
-| 3 | 🗂️ Séries Temáticas | app.py:1064-1476 | CRUD de séries, multiselect de cartas, paginação (25/página), download unificado |
-| 4 | 📥 Exportar | app.py:1477-1849 | Exportação de busca, série, filtro, caderno e base completa em múltiplos formatos |
-| 5 | ⚙️ Configurações | app.py:1850-2091 | Seleção/upload de base, backup/restore de sessão, limpeza |
-| 6 | 📊 Gráficos e Tabelas | app.py:2092-2339 | Gráficos Plotly demográficos/geográficos/temáticos sobre busca, filtro ou base inteira |
-| 7 | 🎯 Filtros | app.py:2340-2775 | Filtro multidimensional por campo (sexo, UF, faixa etária, renda, etc.) |
-| 8 | 🧠 Busca Semântica | app.py:2776-3263 | Busca por similaridade de embeddings RoBERTa, paginada, com threshold ajustável |
-| 9 | 📈 Análise de Frequência | app.py:3264-3502 | Análise comparativa multi-termo (ver §6) |
+| 1 | 🔍 Explorar Cartas | app.py:~903-1117 | Navegação sequencial (anterior/próxima/dropdown), metadados completos, anotação inline, painel de séries |
+| 2 | 📓 Caderno | app.py:~1122-1150 | Anotação por carta + caderno de pesquisa livre em Markdown |
+| 3 | 🗂️ Séries Temáticas | app.py:~1155-1563 | CRUD de séries, multiselect de cartas, paginação (25/página), download unificado |
+| 4 | 📥 Exportar | app.py:~1568-1936 | Exportação de busca, série, filtro, caderno e base completa em múltiplos formatos |
+| 5 | ⚙️ Configurações | app.py:~1941-2178 | Seleção/upload de base, backup/restore de sessão, conversor XLSX/CSV → JSON, pré-computar índice de stems, limpeza |
+| 6 | 📊 Gráficos e Tabelas | app.py:~2183-2416 | Gráficos Plotly demográficos/geográficos/temáticos sobre busca, filtro ou base inteira |
+| 7 | 🎯 Filtros | app.py:~2431-2862 | Filtro multidimensional por campo (sexo, UF, faixa etária, renda, etc.) |
+| 8 | 🧠 Busca Semântica | app.py:~2867-3362 | Busca por similaridade de embeddings RoBERTa, paginada, com threshold ajustável |
+| 9 | 📈 Análise de Frequência | app.py:~3367-3605 | Análise comparativa multi-termo (ver §6) |
 
 A **sidebar** é compartilhada entre as abas 1, 7 e 8 via `st.session_state.sidebar_series_context` (`'explorar'`, `'filtro'`, `'semantica'`), evitando duplicar a lógica de gerenciamento de séries em cada aba — um painel único (`💾 Salvar` / multiselect) reage ao contexto de onde o usuário veio.
 
@@ -80,7 +88,7 @@ Sintaxe suportada, com parser de tokens próprio (`_parse_query`, não usa regex
 
 Duas variantes de matching:
 - **Simples**: normalização de acentos (NFD/Unicode) e substring case-insensitive por padrão.
-- **Variações lexicais**: dicionário `LEXICAL_VARIATIONS` fixo (11 entradas: história, democracia, constituição, governo, povo, direito, liberdade, justiça, igualdade, educação, saúde) mapeando para regex de flexões; para termos fora do dicionário, gera um padrão automático `\b{termo}\w*\b`.
+- **Variações lexicais (stemming RSLP)**: o modo "Variações" delega a `StemmingEngine` (`modules/stemming_engine.py`) — não há mais dicionário `LEXICAL_VARIATIONS`. Duas palavras são variações uma da outra quando compartilham o mesmo **radical RSLP** (Removedor de Sufixos da Língua Portuguesa, NLTK), sem lista pré-selecionada de termos. Requer um **índice de stems** invertido (`stem → formas / carta_id → contagem`) pré-computado e salvo em `cache/stems_{base}.pkl` (botão na aba ⚙️ Configurações). Antes de radicalizar, as palavras passam por `_normalize()` (NFD, remoção de acentos) tanto na indexação quanto na consulta — o RSLP é sensível a acento e "historia"/"história" produziriam radicais diferentes sem isso. Radicais mais curtos que `MIN_STEM_LENGTH` caem para substring exata (accent-insensível), regra estrutural para evitar colisões ortográficas (ex.: "jus" casando "jusante").
 
 Escopo de busca: **"Somente Texto"** (campo `texto`) vs **"Base Inteira"** (`texto`, `nome`, `destinatario`, `catalogo`, `indexacao`, `origem`).
 
@@ -88,9 +96,9 @@ O **highlight** usa um padrão StringBuilder (concatenação de lista + `join` �
 
 ## 5. Busca semântica (`semantic_engine.py`, aba 8)
 
-- **Modelo**: `sentence-transformers/paraphrase-multilingual-mpnet-base-v2` (RoBERTa multilíngue, 768 dimensões, janela de 512 tokens), carregado **lazy** (só na primeira chamada) e mantido em memória.
-  - **Inconsistência a resolver**: `config_manager.py` define `EMBEDDING_MODEL = 'paraphrase-multilingual-MiniLM-L12-v2'`, mas essa constante **não é usada em lugar nenhum** — `SemanticEngine()` é instanciado sem argumentos em `app.py:287`, usando o default do próprio construtor (mpnet). É configuração morta/enganosa que vale limpar ou sincronizar.
-- **Pré-computação**: botão explícito "⚡ Pré-computar Embeddings" (não é automático) — processa em batches de 32, salva `.npz` comprimido (`embeddings` float32 normalizado L2 + `ids`) em `cache/embeddings_{nome_base}.npz`. Leva **15–40 minutos em CPU** para as 72 mil cartas; há também um script CLI equivalente (`scripts/precompute_embeddings.py`) para rodar fora da UI, presumivelmente para contornar timeout do Streamlit Community Cloud.
+- **Modelo**: `sentence-transformers/paraphrase-multilingual-mpnet-base-v2` (RoBERTa multilíngue, 768 dimensões, janela de 512 tokens), carregado **lazy** (só na primeira chamada) e mantido em memória. `config_manager.py` define `EMBEDDING_MODEL` com esse valor e `app.py` instancia `SemanticEngine(model_name=EMBEDDING_MODEL)` (~app.py:146) — constante e uso agora sincronizados.
+  - **Cache compartilhado entre sessões**: o modelo (`get_model_cached`) e a matriz de embeddings (`get_embeddings_cached`) ficam em `@st.cache_resource` via `modules/semantic_engine_cache.py` — no Streamlit Cloud, cada sessão nova reaproveita a mesma cópia do modelo (~420 MB) em vez de recarregá-la. A chave do cache de embeddings inclui o nome da base para não retornar embeddings da base errada ao trocar de base.
+- **Pré-computação**: botão explícito "⚡ Pré-computar Embeddings" (não é automático) — processa em batches de 32, salva `.npz` comprimido (`embeddings` float32 normalizado L2 + `ids`) em `cache/embeddings_{nome_base}.npz`. Leva **15–40 minutos em CPU** para as 72 mil cartas; há também um script CLI equivalente (`scripts/precompute_embeddings.py`) para rodar fora da UI, para contornar timeout do Streamlit Community Cloud. Na prática o `.npz` (e o `stems_*.pkl`) são baixados prontos das GitHub Releases na primeira execução (ver §2).
 - **Validação de cache**: compara o conjunto de IDs salvos com os IDs atuais da base — se divergir, considera desatualizado e exige reindexação manual (nunca recomputa silenciosamente).
 - **Texto indexado por carta**: concatenação de `texto | catalogo | indexacao`, truncada a 1800 caracteres (~450 tokens) para não estourar a janela de 512 tokens do modelo.
 - **Busca**: normaliza a query, calcula similaridade cosseno via produto escalar vetorizado numpy (sem loop Python) contra toda a matriz. A UI busca **sem threshold** (score completo de todas as 72 mil cartas) e aplica o corte dinamicamente no slider — permitindo recalcular o histograma de distribuição de scores sem nova busca.
@@ -98,7 +106,7 @@ O **highlight** usa um padrão StringBuilder (concatenação de lista + `join` �
 
 ## 6. Análise de Frequência (`frequency_analyzer.py`, aba 9)
 
-Módulo e aba **presentes no código mas ausentes da documentação existente** (README.md e CLAUDE.md descrevem só 8 abas). Funcionalidade:
+Funcionalidade:
 - Aceita múltiplos termos separados por `,`, `;` ou `|`.
 - Cada termo é configurável independentemente como **Exato** (substring) ou **Radical** (wildcard `termo\w*` via regex).
 - Para cada termo: conta ocorrências totais, número de documentos únicos, gera cor automática de uma paleta fixa de 12 cores.
@@ -147,7 +155,9 @@ A busca semântica paginada (aba 8) tem uma armadilha de UX documentada no CLAUD
 - Suporta múltiplas bases JSON simultâneas (`loaded_databases: Dict[filename, dict]`), com troca via sidebar.
 - **Cache de módulo em nível de processo** (`_PARSED_DB_CACHE`, fora da classe) indexado por `(caminho_absoluto, mtime)` — evita reparsear um JSON de 100+ MB a cada rerun do Streamlit ou nova sessão do navegador, desde que o arquivo não tenha mudado em disco. Isso é uma otimização crítica dado que Streamlit reexecuta o script inteiro a cada interação.
 - Detecção automática de formato: se o JSON tiver `{"cartas": [...]}` (formato de resultado de busca exportado), normaliza para `{id: {...}}` na carga — permite recarregar um export como uma "base" de trabalho.
-- Conversor XLSX/CSV → JSON implementado no formulário da aba ⚙️ Configurações (lines 333-451 em `app.py`).
+- Na primeira execução, `garantir_base_baixada()` / `garantir_cache_baixado()` baixam `cartas_db.json` e `cache/*` das GitHub Releases se ausentes (ver §2).
+- Conversor XLSX/CSV → JSON implementado no formulário da aba ⚙️ Configurações.
+- A aba ⚙️ Configurações também expõe o botão "⚡ Pré-computar Índice de Stems" (seção "🧬 Índice de Stems"), que gera `cache/stems_{base}.pkl` via `StemmingEngine.compute_stem_index()` — pré-requisito para a busca em modo "Variações". Status (cache existe / válido / nº de cartas indexadas / nº de radicais) via `StemmingEngine.get_status()`; validação por comparação do conjunto de IDs, reindexação manual se a base mudar.
 
 ## 12. Cache e performance
 
@@ -159,14 +169,17 @@ A busca semântica paginada (aba 8) tem uma armadilha de UX documentada no CLAUD
 ## 13. Segurança e implantação
 
 - Sem chamadas a APIs externas de IA — embeddings rodam 100% localmente (download único do modelo via Hugging Face Hub, ~420 MB).
-- Dados e sessão persistidos apenas em arquivos locais (`cartas_db.json`, `sessions/current_session.json`, `cache/*.npz`).
-- Deploy público via **Streamlit Community Cloud**, protegido por senha de acesso (mecanismo nativo do Streamlit Cloud, não implementado em código — não há autenticação de usuários/roles na aplicação). Cloud redeploya automaticamente a cada push em `origin/master` no GitHub — não há passo de deploy manual separado do `git push`.
+- Nenhum dado do usuário é enviado a servidores. O único tráfego de saída (além do modelo) é o download de `cartas_db.json` e `cache/*` das GitHub Releases do projeto (`policronias/historicidades-democraticas-dados`), na primeira execução, quando ausentes.
+- Dados e sessão persistidos apenas em arquivos locais (`cartas_db.json`, `sessions/current_session.json`, `cache/*.npz`, `cache/*.pkl`).
+- Deploy público via **Streamlit Community Cloud**, protegido por senha de acesso (mecanismo nativo do Streamlit Cloud, não implementado em código — não há autenticação de usuários/roles na aplicação). Cloud redeploya automaticamente a cada push em `origin/main` no GitHub (`policronias/historicidades_democraticas`) — não há passo de deploy manual separado do `git push`. (A branch era `master` até 2026-08; hoje é `main`.)
 - Local e Cloud rodam exatamente o mesmo `app.py`/`modules/` — não há branch ou config divergente por ambiente.
 - Testes automatizados existem em `tests/` (`pytest`), ver §15 "Resolvidos".
 
 ## 14. Dependências principais
 
-Versões mínimas (`requirements.txt` usa `>=`; ver arquivo para a lista exata): `streamlit>=1.31.0` · `pandas>=2.2.0` · `plotly>=5.22.0` · `sentence-transformers>=2.4.0` · `nltk>=3.8.0` · `numpy>=1.26.0` · `reportlab>=4.1.0` · `matplotlib>=3.10.0` · `pyarrow>=17.0.0` · `openpyxl>=3.1.2` · `tqdm>=4.67.0` · `filelock>=3.13.0` · `psutil>=5.9.0` (usado por `modules/memory_monitor.py`, opcional/debug).
+Versões mínimas (`requirements.txt` usa `>=`; ver arquivo para a lista exata): `streamlit>=1.31.0` · `pandas>=2.2.0` · `plotly>=5.22.0` · `sentence-transformers>=2.4.0` · `nltk>=3.8.0` · `numpy>=1.26.0` · `reportlab>=4.1.0` · `matplotlib>=3.10.0` · `pyarrow>=17.0.0` · `openpyxl>=3.1.2` · `tqdm>=4.67.0` · `filelock>=3.13.0` · `psutil>=5.9.0` (usado por `modules/memory_monitor.py`, opcional/debug) · `requests` (sem pin — download automático da base e do cache).
+
+Dev (`requirements-dev.txt`, inclui `requirements.txt`): `pytest>=8.0.0` · `pytest-cov>=5.0.0` · `pytest-mock>=3.14.0` · `hypothesis>=6.100.0`.
 
 ## 15. Oportunidades técnicas identificadas (para discussão de roadmap)
 
@@ -182,5 +195,5 @@ Levantamento neutro de pontos que um plano de evolução técnica provavelmente 
 - ✅ **Busca lexical fixa**: `LEXICAL_VARIATIONS` foi substituído por `stemming_engine.py`, que faz stemming real via RSLP (NLTK) — busca por variações lexicais deixou de depender de um dicionário fixo de termos.
 
 ### Remanescentes
-1. **Escala e memória**: base inteira (72.719 cartas, ~103 MB de JSON) carregada em memória do processo Streamlit a cada sessão; embeddings adicionam outra matriz (72.719 × 768 float32 ≈ 224 MB) quando carregados. Em ambientes com recursos limitados (Streamlit Cloud free tier) isso é um teto de escala real caso a base cresça.
+1. **Escala e memória**: base inteira (72.719 cartas, ~103 MB de JSON) carregada em memória do processo Streamlit; embeddings adicionam outra matriz (72.719 × 768 float32 ≈ 224 MB) quando carregados. Mitigações já em vigor: JSON parseado fica em cache de módulo por `(path, mtime)` (`_PARSED_DB_CACHE`), e modelo + matriz de embeddings ficam em `st.cache_resource` compartilhado entre sessões (`semantic_engine_cache.py`) — uma cópia por processo, não por sessão. Ainda assim, em ambientes com recursos limitados (Streamlit Cloud free tier) isso é um teto de escala real caso a base cresça.
 2. **PDF vs HTML — dois pipelines de gráfico**: qualquer novo tipo de gráfico exige implementação separada em matplotlib (PDF) e Plotly (HTML). O cálculo dos dados já é unificado (`CHART_SPECS` + `_contar_campo()` em `export_manager.py`, usados por ambos os pipelines); só a etapa de renderização diverge (~80 linhas no total). A causa **não** é o ReportLab ser incapaz de renderizar Plotly — ele consegue, desde que a figura seja rasterizada antes via `kaleido`. A causa real é que `kaleido` não está instalado no projeto, e foi uma decisão deliberada não adicioná-lo: embute um Chromium headless (dependência pesada) e adiciona segundos de latência por gráfico exportado, sem ganho real numa duplicação já pequena e isolada — avaliado e descartado em 2026-08-23.

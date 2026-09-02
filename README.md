@@ -10,7 +10,7 @@ Plataforma completa de análise de documentos históricos construída com **Stre
 
 ### 1. **Navegação e Busca Avançada**
 - Busca por texto com operadores: `"frase exata"`, `+obrigatório`, `-exclusão`, `termo*` (wildcard)
-- Busca Simples ou com Variações Lexicais
+- Busca Simples ou com **Variações Lexicais** (radical RSLP via NLTK — reconhece flexões de qualquer palavra, sem lista fixa de termos; requer índice de stems pré-computado na aba ⚙️ Configurações)
 - Scope: Somente Texto ou Base Inteira
 - Destaque dinâmico com regex/múltiplas cores
 - Navegação por ID rápida
@@ -51,7 +51,7 @@ Plataforma completa de análise de documentos históricos construída com **Stre
 - 📓 **Caderno**: notas de pesquisa + anotações rápidas
 - 🗂️ **Séries Temáticas**: criar, editar, visualizar séries + download
 - 📥 **Exportar**: CSV, JSON, Parquet, HTML, PDF, ZIP (séries, busca, base completa)
-- ⚙️ **Configurações**: gerenciar bases, backup/restore, conversor XLSX/CSV
+- ⚙️ **Configurações**: gerenciar bases, backup/restore, conversor XLSX/CSV, pré-computar índice de stems
 - 📊 **Gráficos e Tabelas**: análise visual dos dados
 - 🎯 **Filtros**: filtro avançado por campo + painel de séries
 - 🧠 **Busca Semântica**: busca por similaridade semântica
@@ -153,34 +153,45 @@ A aplicação será aberta em `http://localhost:8501`
 
 ```
 historicidades_democraticas/
-├── app.py                          # Aplicação principal Streamlit (~3509 linhas)
-├── requirements.txt                # Dependências Python
-├── cartas_db.json                  # Base de dados JSON (~72k cartas)
+├── app.py                          # Aplicação principal Streamlit (~3610 linhas)
+├── requirements.txt                # Dependências de runtime
+├── requirements-dev.txt            # + pytest / hypothesis (testes)
+├── cartas_db.json                  # Base de dados JSON (~72k cartas, baixada automaticamente)
 ├── CLAUDE.md                       # Referência de arquitetura
 ├── README.md                       # Este arquivo
+├── descricao_software.md           # Descrição técnica completa (estado real do código)
 ├── .streamlit/
 │   └── config.toml                 # Tema nativo (claro/escuro), fontes, raio de borda
 ├── modules/
 │   ├── __init__.py                # Exports de todos os módulos
-│   ├── data_manager.py            # CRUD, índices, load/upload de bases
-│   ├── search_engine.py           # Busca avançada, variações, wildcard
-│   ├── semantic_engine.py         # Embeddings RoBERTa + busca semântica
+│   ├── data_manager.py            # CRUD, índices, load/upload de bases + download automático
+│   ├── search_engine.py           # Busca avançada, wildcard, highlight; variações via StemmingEngine
+│   ├── semantic_engine.py         # Embeddings RoBERTa + busca semântica cosseno
+│   ├── semantic_engine_cache.py   # Cache st.cache_resource do modelo e dos embeddings (entre sessões)
 │   ├── series_manager.py          # Séries temáticas, índice invertido O(1)
-│   ├── annotation_manager.py      # Anotações por carta, caderno de pesquisa
+│   ├── annotation_manager.py      # Anotações por carta, caderno de pesquisa (persistência com filelock)
 │   ├── export_manager.py          # Exportação: CSV, JSON, Parquet, HTML, PDF, ZIP
 │   ├── frequency_analyzer.py      # Análise comparativa de frequência de termos
-│   ├── stemming_engine.py         # Processamento de stemming (suporta highlight)
-│   ├── cache_manager.py           # Cache consolidado: DataFrames, gráficos, CSV
-│   ├── ui_manager.py              # CSS mínimo, cores via tema nativo (.streamlit/config.toml)
-│   ├── config_manager.py          # Constantes, paths, paleta, grupos de campos
-│   └── memory_monitor.py          # Monitor de memória (debug, ?debug=true na URL)
+│   ├── stemming_engine.py         # Variações lexicais por radical RSLP (NLTK); índice de stems
+│   ├── search_suggestions.py      # Autocomplete / sugestões de termos a partir do histórico
+│   ├── feedback_manager.py        # Helpers de feedback visual (status, progress, mensagens)
+│   ├── cache_manager.py           # Cache consolidado: DataFrames, gráficos, CSV, lazy-load de abas
+│   ├── ui_manager.py              # CSS mínimo + helpers de cor/tema Plotly (tema nativo em config.toml)
+│   ├── config_manager.py          # Constantes, campos, EMBEDDING_MODEL, HIGHLIGHT_PALETTE, mensagens
+│   └── memory_monitor.py          # Monitor de memória (debug, ?debug=memory na URL)
 ├── scripts/
 │   ├── backup_sessao.py           # Script: backup manual da sessão
 │   ├── consolidar_buscas.py       # Script: consolidar múltiplos CSVs de busca
 │   └── precompute_embeddings.py   # Script: pré-computar embeddings (CLI)
+├── tests/                          # pytest (search_engine, series_manager, annotation_manager)
+├── cache/
+│   ├── embeddings_<base>.npz      # Embeddings pré-computados (baixados automaticamente)
+│   └── stems_<base>.pkl           # Índice de stems RSLP (baixado automaticamente)
 └── sessions/
     └── current_session.json       # Sessão atual (anotações, séries, caderno)
 ```
+
+> Na primeira execução, `app.py` baixa `cartas_db.json` e os arquivos de `cache/` das **GitHub Releases** (`policronias/historicidades-democraticas-dados`) caso não estejam presentes — o repositório de código não versiona esses arquivos grandes.
 
 ## 🔧 Arquitetura Técnica
 
@@ -189,18 +200,19 @@ historicidades_democraticas/
 - Múltiplas bases simultâneas
 - Índices: nome_index, series_index
 - CRUD cartas, contadores
+- Download automático da base e do cache (GitHub Releases) na primeira execução
 
 ### Search Engine (`modules/search_engine.py`)
 - Busca simples, regex, wildcard
-- Variações lexicais automáticas
+- Modo "Variações": stemming RSLP via `StemmingEngine` (sem dicionário fixo)
 - Destaque HTML com regex
 - Case-sensitive/insensitive
 
 ### Semantic Engine (`modules/semantic_engine.py`)
-- Embeddings (modelo padrão)
-- Busca por similaridade
-- Scoring de relevância
-- Cache de resultados
+- Embeddings `sentence-transformers/paraphrase-multilingual-mpnet-base-v2` (RoBERTa multilíngue, 768 dim)
+- Busca por similaridade cosseno vetorizada (NumPy)
+- Scoring de relevância + threshold dinâmico no slider
+- Cache `.npz` por base; modelo e matriz em `st.cache_resource` compartilhado entre sessões (`semantic_engine_cache.py`)
 
 ### Series Manager (`modules/series_manager.py`)
 - Criar/editar/deletar séries
@@ -222,19 +234,20 @@ historicidades_democraticas/
 - Markdown/TXT para caderno
 
 ### Cache Manager (`modules/cache_manager.py`)
-- @st.cache_data para DataFrames
-- Pré-computa gráficos (Plotly)
-- CSV builder cached
+- `@st.cache_data` para DataFrames (`build_df_fast`, `build_df_cached`)
+- Pré-computa dados de gráficos (`compute_chart_data_cached`, ttl 1h)
+- CSV builder cached (`build_semantic_csv_cached`)
+- Estado de lazy-load das abas 6–9 + cache de resultados de busca em `session_state`
 
 ### UI Manager (`modules/ui_manager.py`)
 - CSS mínimo (tipografia serif do texto da carta) — cores vêm do tema nativo Streamlit
-- Helpers de cor/tema para Plotly (`get_accent_color`, `get_plotly_color_palette`, `apply_plotly_theme`), já que gráficos não herdam o tema nativo automaticamente
+- Paleta de marca (`get_brand_palette`) + símbolo (`policronias_mark_svg`) da identidade Policronias
+- Helpers de cor/tema para Plotly (`get_accent_color`, `get_plotly_color_palette`, `get_plotly_sequential_scale`, `apply_plotly_theme`, `format_pie_labels`), já que gráficos não herdam o tema nativo automaticamente
 
 ### Config Manager (`modules/config_manager.py`)
-- Paths (PROJECT_DIR, DATABASE_PATH)
-- Campos por categoria
-- Paleta de cores
-- Mensagens padrão
+- `PAGE_CONFIG`, `METADATA_FIELDS`, `ANALYSIS_FIELDS`
+- `EMBEDDING_MODEL`, `HIGHLIGHT_PALETTE`
+- `MESSAGES` (mensagens padrão) — sem paths
 
 ## 💾 Persistência
 
@@ -265,11 +278,11 @@ As cores vêm do tema nativo do Streamlit, em `.streamlit/config.toml` (seções
 
 ```toml
 [theme.light]
-primaryColor = "#9c6b3f"
-backgroundColor = "#f7f3ea"
-secondaryBackgroundColor = "#efe9dc"
-textColor = "#2b2621"
-# ... demais cores em .streamlit/config.toml
+primaryColor = "#9c3a26"            # selo terracota — ênfase, links, datação
+backgroundColor = "#f1ede2"         # papel de arquivo
+secondaryBackgroundColor = "#f8f5ec"
+textColor = "#1b1815"               # tinta grafite
+# ... demais cores (borderColor, linkColor, chartCategoricalColors, [theme.dark], sidebars) em .streamlit/config.toml
 ```
 
 Gráficos Plotly não herdam esse tema automaticamente — as mesmas cores estão replicadas em `_CHART_THEME`, em `modules/ui_manager.py`. Ao mudar uma cor no `config.toml`, atualize também `_CHART_THEME` para os gráficos acompanharem:
@@ -280,12 +293,8 @@ accent = get_accent_color()             # cor de destaque do tema ativo (claro/e
 paleta = get_plotly_color_palette()      # paleta categórica para gráficos Plotly
 ```
 
-### Adicionar Variações Lexicais
-Em `modules/search_engine.py`, adicione ao dicionário `LEXICAL_VARIATIONS`:
-
-```python
-'democracia': r'\b(?:democracia|democrático|democrática)\b',
-```
+### Busca por Variações Lexicais
+Não há mais dicionário `LEXICAL_VARIATIONS`. O modo "Variações" usa **stemming RSLP** (`modules/stemming_engine.py`): duas palavras são variações quando compartilham o mesmo radical, sem lista pré-selecionada de termos. Para habilitar, pré-compute o índice de stems na aba ⚙️ Configurações → "🧬 Índice de Stems" (ou via `scripts/precompute_embeddings.py`). Radicais muito curtos (`< MIN_STEM_LENGTH`) caem para substring exata para evitar colisões ortográficas.
 
 ## 📊 Exemplos de Uso
 
@@ -368,17 +377,20 @@ streamlit cache clear
 - **NLTK** ≥3.8: Stemming RSLP (variações lexicais)
 - **ReportLab** ≥4.1: Geração de PDF
 - **Matplotlib** ≥3.10: Gráficos embutidos no PDF
+- **openpyxl** ≥3.1: Leitura de XLSX no conversor XLSX/CSV → JSON
 - **tqdm** ≥4.67: Progress bar nos embeddings
 - **filelock** ≥3.13: Escrita concorrente segura de `sessions/current_session.json`
-- **psutil** ≥5.9: Monitor de memória (debug, `?debug=true`)
+- **psutil** ≥5.9: Monitor de memória (debug, `?debug=memory`)
+- **requests**: download automático da base e do cache a partir das GitHub Releases
 - **re, json, csv, zipfile, datetime, io**: stdlib
+- Testes (`requirements-dev.txt`): **pytest** ≥8, **pytest-cov**, **pytest-mock**, **hypothesis**
 
 ## 🔐 Segurança
 
-- Arquivos JSON são salvos localmente apenas
-- Nenhuma chamada a API externa
-- Nenhum envio de dados para servidores
-- Dados de sessão em arquivo local
+- Arquivos JSON e de sessão são salvos localmente apenas
+- Nenhum dado do usuário é enviado a servidores externos
+- Embeddings rodam 100% localmente (download único do modelo via Hugging Face Hub, ~420 MB)
+- Único tráfego de saída: download da base e do cache a partir das **GitHub Releases** do projeto, na primeira execução
 
 ## 📄 Licença
 
